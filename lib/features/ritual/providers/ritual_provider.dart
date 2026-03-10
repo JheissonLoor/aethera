@@ -1,7 +1,6 @@
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
-import 'package:flutter_riverpod/legacy.dart'
-    show StateNotifier, StateNotifierProvider;
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show Notifier, NotifierProvider, Provider;
 import 'package:aethera/core/services/ritual_service.dart';
 import 'package:aethera/core/services/notification_service.dart';
 
@@ -57,12 +56,17 @@ class RitualState {
       );
 }
 
-class RitualNotifier extends StateNotifier<RitualState> {
-  RitualNotifier(this._service)
-      : super(RitualState(weekQuestion: RitualService.currentWeekQuestion));
-
-  final RitualService _service;
+class RitualNotifier extends Notifier<RitualState> {
+  RitualService get _service => ref.read(ritualServiceProvider);
   StreamSubscription? _ritualSub;
+
+  @override
+  RitualState build() {
+    ref.onDispose(() {
+      _ritualSub?.cancel();
+    });
+    return RitualState(weekQuestion: RitualService.currentWeekQuestion);
+  }
 
   /// Subscribe to live ritual data for this week.
   void watchRitual(String coupleId, String userId, String partnerUserId) {
@@ -117,13 +121,7 @@ class RitualNotifier extends StateNotifier<RitualState> {
     }
   }
 
-  @override
-  void dispose() {
-    _ritualSub?.cancel();
-    super.dispose();
-  }
 }
 
 final ritualProvider =
-    StateNotifierProvider<RitualNotifier, RitualState>((ref) =>
-        RitualNotifier(ref.watch(ritualServiceProvider)));
+    NotifierProvider<RitualNotifier, RitualState>(RitualNotifier.new);
