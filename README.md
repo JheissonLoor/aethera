@@ -1,50 +1,44 @@
 # Aethera
 
 <p align="center">
-  <strong>Un universo emocional para parejas a distancia.</strong><br/>
-  Construido con Flutter + Firebase para convertir la conexión diaria en un mundo vivo compartido.
+  <strong>Un universo emocional premium para parejas a distancia.</strong><br/>
+  Diseno visual cinematografico, arquitectura modular y base real-time con Flutter + Firebase.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter"/>
   <img src="https://img.shields.io/badge/Dart-3.7+-0175C2?logo=dart&logoColor=white" alt="Dart"/>
-  <img src="https://img.shields.io/badge/Firebase-Backend-FFCA28?logo=firebase&logoColor=black" alt="Backend"/>
-  <img src="https://img.shields.io/badge/Riverpod-Estado-4C8BF5" alt="Estado"/>
-  <img src="https://img.shields.io/badge/go_router-Navegación-00BFA5" alt="Navegación"/>
-  <img src="https://img.shields.io/badge/Plataforma-Android%20%7C%20iOS-blueviolet" alt="Plataformas"/>
+  <img src="https://img.shields.io/badge/Firebase-Backend-FFCA28?logo=firebase&logoColor=black" alt="Firebase"/>
+  <img src="https://img.shields.io/badge/Riverpod-Estado-4C8BF5" alt="Riverpod"/>
+  <img src="https://img.shields.io/badge/go_router-Navegacion-00BFA5" alt="go_router"/>
+  <img src="https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white" alt="CI"/>
+</p>
+
+<p align="center">
+  <img src="assets/readme/splash_animado.gif" alt="Splash animado de Aethera" width="280"/>
 </p>
 
 ---
 
-## Visión del Producto
+## Demo visual
 
-La mayoría de apps para parejas a distancia se quedan en el chat.
-Aethera transforma cada interacción emocional en progreso real:
-cada check-in, memoria, ritual, latido y meta compartida cambia visualmente su universo.
-
-Este proyecto combina:
-
-- Pensamiento de producto (retención, progresión, UX emocional)
-- Sistemas en tiempo real (presencia, sincronización, eventos push)
-- UI de alto impacto visual (capas animadas + glassmorphism)
-- Arquitectura mantenible para crecer a producción
+<p align="center">
+  <img src="assets/readme/pantalla_splash.png" alt="Pantalla Splash" width="260"/>
+  <img src="assets/readme/pantalla_onboarding.png" alt="Pantalla Onboarding" width="260"/>
+</p>
 
 ---
 
-## Lo que lo Hace Especial
+## Que hace especial a Aethera
 
-- Universo compartido en tiempo real que reacciona al estado de la pareja
-- Flujo de vinculación por código de invitación
-- Ritual semanal con revelado asíncrono de respuestas
-- Presencia y latidos con Firebase Realtime Database
-- Motor de progresión con rachas, puntos y niveles del universo
-- Notificaciones push y locales (FCM + Flutter Local Notifications)
-- Audio ambiental adaptativo según emoción combinada
-- Arquitectura modular (`core`, `features`, `shared`) con Riverpod + GoRouter
+- Universo compartido que evoluciona con la conexion emocional de la pareja.
+- Experiencia visual en capas: cielo emocional, aurora, estrellas, memorias y horizonte de metas.
+- Diseno de producto orientado a retencion: ritual semanal, rachas, puntos y progresion.
+- Arquitectura preparada para escalar a produccion con separacion por dominios (`core`, `features`, `shared`).
 
 ---
 
-## Arquitectura
+## Arquitectura (alto nivel)
 
 ```mermaid
 flowchart LR
@@ -57,73 +51,51 @@ flowchart LR
     C --> H["Notificaciones Locales"]
 ```
 
-### Stack Tecnológico
+---
 
-- Frontend: Flutter, Dart, Material 3
-- Estado: Riverpod (`StateNotifier`)
-- Navegación: `go_router`
-- Backend:
-  - Firebase Authentication
-  - Cloud Firestore
-  - Firebase Realtime Database
-  - Firebase Cloud Messaging
-  - Firebase Storage
-- UX y Animación:
-  - `flutter_animate`
-  - CustomPainter y fondos animados por capas
-- Audio:
-  - `audioplayers`
+## Stack tecnologico
+
+- `Flutter` + `Dart`
+- Estado con `flutter_riverpod`
+- Navegacion con `go_router`
+- Backend con `Firebase` (Auth, Firestore, Realtime DB, Messaging, Storage)
+- UI y motion con `flutter_animate` + sistema visual propio (`AetheraTokens`)
 
 ---
 
-## Estructura del Proyecto
+## Estructura del proyecto
 
 ```text
 lib/
-├── core/
-│   ├── constants/      # reglas de progresión y constantes globales
-│   ├── providers/      # estado global y ciclo de vida
-│   ├── router/         # navegación protegida
-│   ├── services/       # firebase, notificaciones, presencia, ritual, audio
-│   ├── theme/          # tokens y sistema visual
-│   └── utils/          # utilidades de dominio (ej: rachas)
-├── features/
-│   ├── auth/
-│   ├── onboarding/
-│   ├── pairing/
-│   ├── profile/
-│   ├── ritual/
-│   ├── splash/
-│   └── universe/
-└── shared/
-    ├── models/         # modelos de dominio tipados
-    └── widgets/        # componentes reutilizables
+|-- core/
+|   |-- constants/
+|   |-- providers/
+|   |-- router/
+|   |-- services/
+|   |-- theme/
+|   `-- utils/
+|-- features/
+|   |-- auth/
+|   |-- onboarding/
+|   |-- pairing/
+|   |-- profile/
+|   |-- ritual/
+|   |-- splash/
+|   `-- universe/
+`-- shared/
+    |-- models/
+    `-- widgets/
 ```
 
 ---
 
-## Calidad de Ingeniería
-
-- Análisis estático: `flutter analyze` sin issues
-- Pruebas automatizadas:
-  - lógica de rachas
-  - serialización de `MemoryModel`
-  - interacción de widget (`AetheraButton`)
-- Endurecimiento de confiabilidad:
-  - sincronización de token FCM robusta ante cambios de auth
-  - rachas protegidas con transacciones en Firestore
-  - eliminación de falsos positivos en notificación de memorias
-  - fallback mock restringido solo a debug
-
----
-
-## Inicio Rápido
+## Inicio rapido
 
 ### 1) Requisitos
 
 - Flutter SDK 3.x
-- Dart SDK (incluido con Flutter)
-- Proyecto Firebase con apps Android/iOS/Web configuradas
+- Dart SDK (incluido en Flutter)
+- Proyecto Firebase configurado para Android/iOS/Web
 
 ### 2) Instalar dependencias
 
@@ -131,33 +103,25 @@ lib/
 flutter pub get
 ```
 
-### 3) Configurar Firebase
+### 3) Configurar Firebase (local)
 
 ```bash
 flutterfire configure
 ```
 
-Nota de seguridad:
+Notas de seguridad del repositorio:
 
-- `lib/firebase_options.dart` en este repositorio está sanitizado intencionalmente.
-- `android/app/google-services.json` no se versiona; usa `android/app/google-services.json.example` solo como referencia de estructura.
-- Genera tus configuraciones reales en local con FlutterFire/Firebase Console y mantén esos archivos fuera de Git.
+- `lib/firebase_options.dart` esta sanitizado intencionalmente.
+- `android/app/google-services.json` no se versiona.
+- Usa `android/app/google-services.json.example` solo como plantilla.
 
-Asegúrate de habilitar en Firebase Console:
-
-- Authentication (Email/Password)
-- Cloud Firestore
-- Realtime Database
-- Cloud Messaging
-- Cloud Storage
-
-### 4) Ejecutar la app
+### 4) Ejecutar
 
 ```bash
 flutter run
 ```
 
-### 5) Verificar calidad
+### 5) Calidad
 
 ```bash
 flutter analyze
@@ -166,17 +130,25 @@ flutter test
 
 ---
 
-## Hoja de Ruta
+## CI y estandares del repositorio
 
-- Memorias multimedia con galería y timeline
-- Prompts de ritual inteligentes con personalización adaptativa
-- Sistema de progresión ampliado con hitos y artefactos
-- Analítica de producto + base para experimentos A/B
-- CI/CD con compuertas de calidad
+- Pipeline de CI en GitHub Actions: `.github/workflows/ci_flutter.yml`
+- Guia de colaboracion: `CONTRIBUTING.md`
+- Codigo de conducta: `CODE_OF_CONDUCT.md`
+- Licencia: `LICENSE`
+
+---
+
+## Roadmap tecnico
+
+- Integracion completa con Firestore/Realtime DB en todos los flujos.
+- Memorias multimedia con timeline visual.
+- Ritual semanal enriquecido y personalizable.
+- Metricas de producto y base para experimentacion A/B.
 
 ---
 
 ## Autor
 
 **Jheisson Loor**  
-Ingeniero Mobile enfocado en experiencias Flutter orientadas a producto, arquitectura en tiempo real y ejecución visual.
+Ingeniero Flutter enfocado en producto, tiempo real y experiencias visuales premium.
