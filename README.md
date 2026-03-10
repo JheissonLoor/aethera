@@ -1,7 +1,7 @@
 # Aethera
 
 <p align="center">
-  <strong>Un universo emocional premium para parejas a distancia.</strong><br/>
+  <strong>Un universo emocional para parejas a distancia.</strong><br/>
   Diseno visual cinematografico, arquitectura modular y base real-time con Flutter + Firebase.
 </p>
 
@@ -151,4 +151,4 @@ flutter test
 ## Autor
 
 **Jheisson Loor**  
-Ingeniero Flutter enfocado en producto, tiempo real y experiencias visuales premium.
+Ingeniero Flutter enfocado en producto, tiempo real y experiencias visuales.
