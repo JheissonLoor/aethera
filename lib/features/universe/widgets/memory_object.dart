@@ -8,6 +8,7 @@ import 'package:aethera/shared/models/memory_model.dart';
 class MemoryObjectWidget extends StatelessWidget {
   final MemoryModel memory;
   final VoidCallback? onTap;
+
   /// Index for staggered animation — each memory floats at a different rate.
   final int animationIndex;
 
@@ -25,7 +26,12 @@ class MemoryObjectWidget extends StatelessWidget {
 
     // Vary float duration and amplitude per object so they don't bob in sync
     final floatDuration = Duration(milliseconds: 2200 + animationIndex * 400);
-    final floatAmplitude = (animationIndex % 3 == 0) ? -8.0 : (animationIndex % 3 == 1) ? -5.0 : -7.0;
+    final floatAmplitude =
+        (animationIndex % 3 == 0)
+            ? -8.0
+            : (animationIndex % 3 == 1)
+            ? -5.0
+            : -7.0;
     final floatDelay = Duration(milliseconds: animationIndex * 300);
 
     return GestureDetector(
@@ -35,32 +41,32 @@ class MemoryObjectWidget extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  glowColor.withValues(alpha: 0.22),
-                  glowColor.withValues(alpha: 0.06),
-                ],
-              ),
-              border: Border.all(
-                color: glowColor.withValues(alpha: 0.45),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: glowColor.withValues(alpha: 0.4),
-                  blurRadius: 22,
-                  spreadRadius: 3,
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      glowColor.withValues(alpha: 0.22),
+                      glowColor.withValues(alpha: 0.06),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: glowColor.withValues(alpha: 0.45),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: glowColor.withValues(alpha: 0.4),
+                      blurRadius: 22,
+                      spreadRadius: 3,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Center(
-              child: Text(icon, style: const TextStyle(fontSize: 24)),
-            ),
-          )
+                child: Center(
+                  child: Text(icon, style: const TextStyle(fontSize: 24)),
+                ),
+              )
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .moveY(
                 begin: 0,
@@ -93,6 +99,8 @@ class MemoryObjectWidget extends StatelessWidget {
         return AetheraTokens.starlightBlue;
       case 'island':
         return AetheraTokens.roseQuartz;
+      case 'relic':
+        return AetheraTokens.goldenDawn;
       default:
         return AetheraTokens.moonGlow;
     }

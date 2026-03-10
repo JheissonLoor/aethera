@@ -1,16 +1,16 @@
 abstract class AppConstants {
-  // ─── Timing ───────────────────────────────────────────────────────
+  // Timing
   static const Duration splashDuration = Duration(milliseconds: 3500);
   static const Duration animationFast = Duration(milliseconds: 300);
   static const Duration animationMedium = Duration(milliseconds: 600);
   static const Duration animationSlow = Duration(milliseconds: 1000);
 
-  // ─── Universe ─────────────────────────────────────────────────────
+  // Universe
   static const int starCount = 150;
   static const int maxConnectionStrength = 100;
   static const int universeMaxLevel = 5;
 
-  // ─── Progression points ───────────────────────────────────────────
+  // Progression points
   static const int pointsDailyCheckin = 5;
   static const int pointsWeeklyRitual = 15;
   static const int pointsAddMemory = 10;
@@ -19,7 +19,7 @@ abstract class AppConstants {
   static const int pointsSyncRitual = 40;
   static const int syncRitualSeconds = 60;
 
-  // â”€â”€â”€ Sync ritual events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Live sync ritual events
   static const List<String> syncCosmicEvents = [
     'Aurora Gemela',
     'Lluvia de Estrellas',
@@ -28,17 +28,17 @@ abstract class AppConstants {
     'Cometa del Reencuentro',
   ];
 
-  // ─── Firestore collections ────────────────────────────────────────
+  // Firestore collections
   static const String colUsers = 'users';
   static const String colCouples = 'couples';
   static const String colMemories = 'memories';
   static const String colGoals = 'goals';
   static const String colRituals = 'rituals';
 
-  // ─── Presence (Realtime DB) ───────────────────────────────────────
+  // Presence (Realtime DB)
   static const String rtPresence = 'presence';
 
-  // ─── Emotions ────────────────────────────────────────────────────
+  // Emotions
   static const List<String> emotions = [
     'joy',
     'love',
@@ -66,13 +66,14 @@ abstract class AppConstants {
     'anxious': 'Ansiedad',
   };
 
-  // ─── Memory types ─────────────────────────────────────────────────
+  // Memory types
   static const List<String> memoryTypes = [
     'tree',
     'lighthouse',
     'constellation',
     'bridge',
     'island',
+    'relic',
   ];
 
   static const Map<String, String> memoryTypeIcons = {
@@ -81,5 +82,6 @@ abstract class AppConstants {
     'constellation': '⭐',
     'bridge': '🌉',
     'island': '🏝️',
+    'relic': '🜦',
   };
 }

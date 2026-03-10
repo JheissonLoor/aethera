@@ -31,6 +31,10 @@ class UniverseAppState {
   /// Incoming wish from partner, not yet seen
   final WishModel? incomingWish;
 
+  /// Pending fullscreen cutscene for a newly unlocked cosmic event.
+  final String? cosmicEventName;
+  final String? cosmicEventMemoryId;
+
   /// Consecutive days both users checked in
   final int streakDays;
 
@@ -44,6 +48,8 @@ class UniverseAppState {
     this.isLoading = true,
     this.emotionFeedback,
     this.incomingWish,
+    this.cosmicEventName,
+    this.cosmicEventMemoryId,
     this.streakDays = 0,
   });
 
@@ -65,6 +71,9 @@ class UniverseAppState {
     bool clearEmotionFeedback = false,
     WishModel? incomingWish,
     bool clearIncomingWish = false,
+    String? cosmicEventName,
+    String? cosmicEventMemoryId,
+    bool clearCosmicEvent = false,
     int? streakDays,
   }) => UniverseAppState(
     couple: couple ?? this.couple,
@@ -78,6 +87,12 @@ class UniverseAppState {
         clearEmotionFeedback ? null : (emotionFeedback ?? this.emotionFeedback),
     incomingWish:
         clearIncomingWish ? null : (incomingWish ?? this.incomingWish),
+    cosmicEventName:
+        clearCosmicEvent ? null : (cosmicEventName ?? this.cosmicEventName),
+    cosmicEventMemoryId:
+        clearCosmicEvent
+            ? null
+            : (cosmicEventMemoryId ?? this.cosmicEventMemoryId),
     streakDays: streakDays ?? this.streakDays,
   );
 }
@@ -111,6 +126,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
   bool _isUser1 = false;
   bool _sessionPointsAwarded = false;
   bool _memoriesInitialized = false;
+  final Set<String> _seenCosmicEventMemoryIds = <String>{};
   String? _myUserId;
   String? _coupleId;
 
@@ -119,6 +135,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
   Future<void> _init() async {
     _sessionPointsAwarded = false;
     _memoriesInitialized = false;
+    _seenCosmicEventMemoryIds.clear();
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -171,19 +188,44 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
                     .toList();
 
             var isNewFromPartner = false;
+            String? cosmicEventName;
+            String? cosmicEventMemoryId;
             if (_memoriesInitialized) {
               final previousIds = state.memories.map((m) => m.id).toSet();
-              isNewFromPartner = newMemories.any((memory) {
-                if (previousIds.contains(memory.id)) return false;
+              for (final memory in newMemories) {
+                if (previousIds.contains(memory.id)) continue;
+
+                if (memory.type == 'relic') {
+                  if (!_seenCosmicEventMemoryIds.contains(memory.id)) {
+                    _seenCosmicEventMemoryIds.add(memory.id);
+                    cosmicEventName =
+                        memory.title.isNotEmpty
+                            ? memory.title
+                            : 'Evento Cósmico';
+                    cosmicEventMemoryId = memory.id;
+                  }
+                  continue;
+                }
+
                 final authorId = memory.createdByUserId;
-                return authorId == null || authorId != user.uid;
-              });
+                if (authorId == null || authorId != user.uid) {
+                  isNewFromPartner = true;
+                }
+              }
+            } else {
+              for (final memory in newMemories) {
+                if (memory.type == 'relic') {
+                  _seenCosmicEventMemoryIds.add(memory.id);
+                }
+              }
             }
             _memoriesInitialized = true;
 
             state = state.copyWith(
               memories: newMemories,
               newMemoryFromPartner: isNewFromPartner,
+              cosmicEventName: cosmicEventName,
+              cosmicEventMemoryId: cosmicEventMemoryId,
             );
             if (isNewFromPartner) {
               _memoryNotifTimer?.cancel();
@@ -454,6 +496,10 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     await _db.collection('wishes').doc(wish.id).update({'seen': true});
   }
 
+  void dismissCosmicEventCutscene() {
+    state = state.copyWith(clearCosmicEvent: true);
+  }
+
   /// Increments the connection streak if both users checked in today.
   Future<void> _tryIncrementStreak() async {
     final coupleId = _coupleId ?? state.couple?.id;
@@ -586,5 +632,6 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
   }
 }
 
-final universeProvider =
-    NotifierProvider<UniverseNotifier, UniverseAppState>(UniverseNotifier.new);
+final universeProvider = NotifierProvider<UniverseNotifier, UniverseAppState>(
+  UniverseNotifier.new,
+);
