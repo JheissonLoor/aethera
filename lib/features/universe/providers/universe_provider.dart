@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Ref;
-import 'package:flutter_riverpod/legacy.dart'
-    show StateNotifier, StateNotifierProvider;
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show Notifier, NotifierProvider;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
@@ -85,13 +84,16 @@ class UniverseAppState {
 
 // ─── Notifier ─────────────────────────────────────────────────────────────────
 
-class UniverseNotifier extends StateNotifier<UniverseAppState> {
-  UniverseNotifier(this._ref) : super(const UniverseAppState()) {
+class UniverseNotifier extends Notifier<UniverseAppState> {
+  @override
+  UniverseAppState build() {
+    // If build is re-executed, avoid duplicated listeners/timers.
+    _disposeResources();
+    ref.onDispose(_disposeResources);
     _init();
+    return const UniverseAppState();
   }
 
-  // ignore: unused_field
-  final Ref _ref;
   final _db = FirebaseFirestore.instance;
   final _coupleService = CoupleService();
   final _presence = PresenceService();
@@ -186,7 +188,7 @@ class UniverseNotifier extends StateNotifier<UniverseAppState> {
             if (isNewFromPartner) {
               _memoryNotifTimer?.cancel();
               _memoryNotifTimer = Timer(const Duration(seconds: 4), () {
-                if (mounted) {
+                if (ref.mounted) {
                   state = state.copyWith(newMemoryFromPartner: false);
                 }
               });
@@ -261,7 +263,7 @@ class UniverseNotifier extends StateNotifier<UniverseAppState> {
         _pulseTimer?.cancel();
         state = state.copyWith(receivedPulse: true);
         _pulseTimer = Timer(const Duration(seconds: 3), () {
-          if (mounted) state = state.copyWith(receivedPulse: false);
+          if (ref.mounted) state = state.copyWith(receivedPulse: false);
         });
         NotificationService.instance.showPulseNotification();
       }
@@ -300,7 +302,7 @@ class UniverseNotifier extends StateNotifier<UniverseAppState> {
     state = state.copyWith(couple: updated, emotionFeedback: mood);
     // Clear feedback after 3 seconds
     Timer(const Duration(seconds: 3), () {
-      if (mounted) state = state.copyWith(clearEmotionFeedback: true);
+      if (ref.mounted) state = state.copyWith(clearEmotionFeedback: true);
     });
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -498,7 +500,7 @@ class UniverseNotifier extends StateNotifier<UniverseAppState> {
       tx.update(coupleRef, updates);
     });
 
-    if (mounted && newStreak != null) {
+    if (ref.mounted && newStreak != null) {
       state = state.copyWith(streakDays: newStreak);
     }
   }
@@ -571,8 +573,7 @@ class UniverseNotifier extends StateNotifier<UniverseAppState> {
     );
   }
 
-  @override
-  void dispose() {
+  void _disposeResources() {
     _coupleSub?.cancel();
     _memoriesSub?.cancel();
     _goalsSub?.cancel();
@@ -582,11 +583,8 @@ class UniverseNotifier extends StateNotifier<UniverseAppState> {
     _pulseTimer?.cancel();
     _memoryNotifTimer?.cancel();
     _presence.disconnect();
-    super.dispose();
   }
 }
 
 final universeProvider =
-    StateNotifierProvider<UniverseNotifier, UniverseAppState>(
-      (ref) => UniverseNotifier(ref),
-    );
+    NotifierProvider<UniverseNotifier, UniverseAppState>(UniverseNotifier.new);
