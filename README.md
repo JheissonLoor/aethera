@@ -1,7 +1,7 @@
 # Aethera
 
 <p align="center">
-  <strong>Un universo emocional premium para parejas a distancia.</strong><br/>
+  <strong>Un universo emocional para parejas a distancia.</strong><br/>
   Construido con Flutter + Firebase para convertir la conexión diaria en un mundo vivo compartido.
 </p>
 
