@@ -250,6 +250,20 @@ class NotificationService {
     body: 'Tu pareja añadió una meta a su universo compartido.',
   );
 
+  /// Partner invited you to start the 60s live sync ritual.
+  void showSyncInviteNotification() => _show(
+    id: 6,
+    title: 'Invitación de sincronía ✦',
+    body: 'Tu pareja quiere sincronizar latidos contigo ahora.',
+  );
+
+  /// Both users completed the live sync ritual and unlocked an event.
+  void showSyncUnlockedNotification(String eventName) => _show(
+    id: 7,
+    title: 'Evento cósmico desbloqueado',
+    body: 'Desbloquearon $eventName al sincronizar sus latidos.',
+  );
+
   // ── Weekly ritual reminder ────────────────────────────────────────────────
 
   /// Schedules a recurring local notification every Monday at 09:00 (local time).

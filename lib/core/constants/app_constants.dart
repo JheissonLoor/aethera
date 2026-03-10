@@ -16,6 +16,17 @@ abstract class AppConstants {
   static const int pointsAddMemory = 10;
   static const int pointsSimultaneousOnline = 3;
   static const int pointsGoalComplete = 20;
+  static const int pointsSyncRitual = 40;
+  static const int syncRitualSeconds = 60;
+
+  // â”€â”€â”€ Sync ritual events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  static const List<String> syncCosmicEvents = [
+    'Aurora Gemela',
+    'Lluvia de Estrellas',
+    'Eclipse de Corazones',
+    'Nebulosa de Promesas',
+    'Cometa del Reencuentro',
+  ];
 
   // ─── Firestore collections ────────────────────────────────────────
   static const String colUsers = 'users';

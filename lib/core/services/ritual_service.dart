@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aethera/core/constants/app_constants.dart';
 
 class RitualService {
   final _db = FirebaseFirestore.instance;
@@ -25,6 +26,13 @@ class RitualService {
   String getWeekQuestion() {
     final week = _weekNumber(DateTime.now());
     return _questions[week % _questions.length];
+  }
+
+  String getCurrentSyncEvent() {
+    final week = _weekNumber(DateTime.now());
+    return AppConstants.syncCosmicEvents[
+      week % AppConstants.syncCosmicEvents.length
+    ];
   }
 
   String getWeekId([DateTime? date]) {
@@ -85,6 +93,114 @@ class RitualService {
     // +15 connection strength
     await _db.collection('couples').doc(coupleId).update({
       'connectionStrength': FieldValue.increment(15),
+    });
+  }
+
+  // â”€â”€ Live Sync Ritual â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  Future<void> sendSyncInvite({
+    required String coupleId,
+    required String fromUserId,
+  }) async {
+    final ref = _db
+        .collection('rituals')
+        .doc(coupleId)
+        .collection('weekly')
+        .doc(getWeekId());
+
+    await ref.set({
+      'syncInviteFrom': fromUserId,
+      'syncInviteAt': DateTime.now().millisecondsSinceEpoch,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> setSyncHolding({
+    required String coupleId,
+    required String userId,
+    required bool isHolding,
+  }) async {
+    final ref = _db
+        .collection('rituals')
+        .doc(coupleId)
+        .collection('weekly')
+        .doc(getWeekId());
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final updates = <String, dynamic>{
+      'syncHolding_$userId': isHolding,
+      'syncUpdatedAt': now,
+    };
+    if (isHolding) {
+      updates['syncHoldSince_$userId'] = now;
+    } else {
+      updates['syncHoldSince_$userId'] = FieldValue.delete();
+    }
+
+    await ref.set(updates, SetOptions(merge: true));
+  }
+
+  Future<bool> completeSyncSession({
+    required String coupleId,
+    required String userId,
+    required String partnerUserId,
+    int requiredSeconds = AppConstants.syncRitualSeconds,
+  }) async {
+    final weekRef = _db
+        .collection('rituals')
+        .doc(coupleId)
+        .collection('weekly')
+        .doc(getWeekId());
+    final coupleRef = _db.collection('couples').doc(coupleId);
+    final memoryRef = _db.collection('memories').doc();
+
+    return _db.runTransaction((tx) async {
+      final weekSnap = await tx.get(weekRef);
+      final data = weekSnap.data();
+      if (data == null) return false;
+      if (data['syncCompleted'] == true) return false;
+
+      final myHolding = data['syncHolding_$userId'] == true;
+      final partnerHolding = data['syncHolding_$partnerUserId'] == true;
+      final mySince = (data['syncHoldSince_$userId'] as num?)?.toInt();
+      final partnerSince = (data['syncHoldSince_$partnerUserId'] as num?)
+          ?.toInt();
+      if (!myHolding || !partnerHolding || mySince == null || partnerSince == null) {
+        return false;
+      }
+
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final overlapMs = now - (mySince > partnerSince ? mySince : partnerSince);
+      if (overlapMs < requiredSeconds * 1000) return false;
+
+      final event = getCurrentSyncEvent();
+      tx.set(weekRef, {
+        'syncCompleted': true,
+        'syncCompletedAt': now,
+        'syncEvent': event,
+        'syncHolding_$userId': false,
+        'syncHolding_$partnerUserId': false,
+        'syncHoldSince_$userId': FieldValue.delete(),
+        'syncHoldSince_$partnerUserId': FieldValue.delete(),
+      }, SetOptions(merge: true));
+
+      tx.update(coupleRef, {
+        'connectionStrength': FieldValue.increment(AppConstants.pointsSyncRitual),
+      });
+
+      tx.set(memoryRef, {
+        'id': memoryRef.id,
+        'coupleId': coupleId,
+        'type': 'relic',
+        'title': event,
+        'description':
+            'Desbloquearon $event al sincronizar latidos durante ${requiredSeconds}s.',
+        'createdByUserId': 'system',
+        'createdAt': now,
+        'posX': 0.5,
+        'posY': 0.58,
+      });
+
+      return true;
     });
   }
 }
