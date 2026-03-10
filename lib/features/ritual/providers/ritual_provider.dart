@@ -1,5 +1,7 @@
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
+import 'package:flutter_riverpod/legacy.dart'
+    show StateNotifier, StateNotifierProvider;
 import 'package:aethera/core/services/ritual_service.dart';
 import 'package:aethera/core/services/notification_service.dart';
 

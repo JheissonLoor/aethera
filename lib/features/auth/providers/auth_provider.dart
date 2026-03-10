@@ -1,4 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show AsyncValue, Provider;
+import 'package:flutter_riverpod/legacy.dart'
+    show StateNotifier, StateNotifierProvider;
 import 'package:aethera/core/services/auth_service.dart';
 import 'package:aethera/core/services/user_service.dart';
 import 'package:aethera/shared/models/user_model.dart';

@@ -1,4 +1,6 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
+import 'package:flutter_riverpod/legacy.dart'
+    show StateNotifier, StateNotifierProvider;
 import 'package:aethera/core/services/couple_service.dart';
 import 'package:aethera/core/providers/app_state_notifier.dart';
 import 'package:aethera/shared/models/couple_model.dart';
