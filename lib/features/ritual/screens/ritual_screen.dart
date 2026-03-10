@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:aethera/core/constants/app_constants.dart';
 import 'package:aethera/core/theme/aethera_tokens.dart';
 import 'package:aethera/core/services/ritual_service.dart';
 import 'package:aethera/features/ritual/providers/ritual_provider.dart';
@@ -41,12 +42,17 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
   void initState() {
     super.initState();
     _celebrationCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2000));
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
     _pulseCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat(reverse: true);
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
     _cartaRevealCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _initRitual());
   }
@@ -58,7 +64,9 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
     if (couple != null && myUserId.isNotEmpty) {
       final partnerUserId =
           couple.user1Id == myUserId ? couple.user2Id : couple.user1Id;
-      ref.read(ritualProvider.notifier).watchRitual(couple.id, myUserId, partnerUserId);
+      ref
+          .read(ritualProvider.notifier)
+          .watchRitual(couple.id, myUserId, partnerUserId);
     }
   }
 
@@ -78,7 +86,9 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
   void _nextPage() {
     FocusScope.of(context).unfocus();
     _pageCtrl.nextPage(
-        duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
   }
 
   Future<void> _submit() async {
@@ -88,16 +98,48 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (coupleId == null || userId == null) return;
 
-    await ref.read(ritualProvider.notifier).submit(
-      coupleId: coupleId,
-      userId: userId,
-      answer: _answerCtrl.text,
-      gratitude: [_gratitude1.text, _gratitude2.text, _gratitude3.text],
-    );
+    await ref
+        .read(ritualProvider.notifier)
+        .submit(
+          coupleId: coupleId,
+          userId: userId,
+          answer: _answerCtrl.text,
+          gratitude: [_gratitude1.text, _gratitude2.text, _gratitude3.text],
+        );
 
     setState(() => _justCompletedThisSession = true);
     _celebrationCtrl.forward();
     _nextPage();
+  }
+
+  Future<void> _inviteSync() async {
+    final universe = ref.read(universeProvider);
+    final coupleId = universe.couple?.id;
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (coupleId == null || userId == null) return;
+    await ref
+        .read(ritualProvider.notifier)
+        .sendSyncInvite(coupleId: coupleId, userId: userId);
+  }
+
+  Future<void> _startSyncHold() async {
+    final universe = ref.read(universeProvider);
+    final coupleId = universe.couple?.id;
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (coupleId == null || userId == null) return;
+    await ref
+        .read(ritualProvider.notifier)
+        .startSyncHold(coupleId: coupleId, userId: userId);
+  }
+
+  Future<void> _stopSyncHold() async {
+    final universe = ref.read(universeProvider);
+    final coupleId = universe.couple?.id;
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (coupleId == null || userId == null) return;
+    await ref
+        .read(ritualProvider.notifier)
+        .stopSyncHold(coupleId: coupleId, userId: userId);
   }
 
   void _goToPartnerCarta() {
@@ -126,14 +168,23 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
           const CosmicBackground(),
           AnimatedBuilder(
             animation: _pulseCtrl,
-            builder: (_, __) =>
-                AuroraEffect(opacity: 0.5 + _pulseCtrl.value * 0.3),
+            builder:
+                (_, __) => AuroraEffect(opacity: 0.5 + _pulseCtrl.value * 0.3),
           ),
 
           // ── Main content ──────────────────────────────────────────────
           if (showAlreadyCompleted)
             _AlreadyCompletedView(
               state: ritualState,
+              onInviteSync: () {
+                _inviteSync();
+              },
+              onSyncHoldStart: () {
+                _startSyncHold();
+              },
+              onSyncHoldEnd: () {
+                _stopSyncHold();
+              },
               onViewPartnerCarta: () {
                 setState(() => _justCompletedThisSession = true);
                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -151,9 +202,10 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
               children: [
                 // Page 0: Question
                 _QuestionPage(
-                  question: ritualState.weekQuestion.isNotEmpty
-                      ? ritualState.weekQuestion
-                      : _ritualSvc.getWeekQuestion(),
+                  question:
+                      ritualState.weekQuestion.isNotEmpty
+                          ? ritualState.weekQuestion
+                          : _ritualSvc.getWeekQuestion(),
                   controller: _answerCtrl,
                   onNext: _nextPage,
                 ),
@@ -169,7 +221,16 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
                 _CelebrationPage(
                   animCtrl: _celebrationCtrl,
                   pulseCtrl: _pulseCtrl,
-                  partnerCompleted: ritualState.partnerCompleted,
+                  ritualState: ritualState,
+                  onInviteSync: () {
+                    _inviteSync();
+                  },
+                  onSyncHoldStart: () {
+                    _startSyncHold();
+                  },
+                  onSyncHoldEnd: () {
+                    _stopSyncHold();
+                  },
                   onViewPartnerCarta: _goToPartnerCarta,
                   onClose: () => context.pop(),
                 ),
@@ -178,9 +239,10 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
                   revealCtrl: _cartaRevealCtrl,
                   partnerAnswer: ritualState.partnerAnswer,
                   partnerGratitude: ritualState.partnerGratitude,
-                  question: ritualState.weekQuestion.isNotEmpty
-                      ? ritualState.weekQuestion
-                      : _ritualSvc.getWeekQuestion(),
+                  question:
+                      ritualState.weekQuestion.isNotEmpty
+                          ? ritualState.weekQuestion
+                          : _ritualSvc.getWeekQuestion(),
                   onClose: () => context.pop(),
                 ),
               ],
@@ -202,8 +264,9 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
                         context.pop();
                       } else {
                         _pageCtrl.previousPage(
-                            duration: const Duration(milliseconds: 400),
-                            curve: Curves.easeInOut);
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeInOut,
+                        );
                       }
                     },
                     child: Container(
@@ -213,10 +276,14 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
                         shape: BoxShape.circle,
                         color: Colors.white.withValues(alpha: 0.08),
                         border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.15)),
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
                       ),
-                      child: Icon(Icons.arrow_back_rounded,
-                          color: AetheraTokens.moonGlow, size: 20),
+                      child: Icon(
+                        Icons.arrow_back_rounded,
+                        color: AetheraTokens.moonGlow,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ),
@@ -240,9 +307,10 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
                     height: 6,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(3),
-                      color: i == _currentPage
-                          ? AetheraTokens.auroraTeal
-                          : AetheraTokens.moonGlow.withValues(alpha: 0.3),
+                      color:
+                          i == _currentPage
+                              ? AetheraTokens.auroraTeal
+                              : AetheraTokens.moonGlow.withValues(alpha: 0.3),
                     ),
                   ),
                 ),
@@ -258,10 +326,16 @@ class _RitualScreenState extends ConsumerState<RitualScreen>
 
 class _AlreadyCompletedView extends StatelessWidget {
   final RitualState state;
+  final VoidCallback onInviteSync;
+  final VoidCallback onSyncHoldStart;
+  final VoidCallback onSyncHoldEnd;
   final VoidCallback onViewPartnerCarta;
 
   const _AlreadyCompletedView({
     required this.state,
+    required this.onInviteSync,
+    required this.onSyncHoldStart,
+    required this.onSyncHoldEnd,
     required this.onViewPartnerCarta,
   });
 
@@ -291,21 +365,27 @@ class _AlreadyCompletedView extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: Colors.white.withValues(alpha: 0.08),
                       border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15)),
+                        color: Colors.white.withValues(alpha: 0.15),
+                      ),
                     ),
-                    child: Icon(Icons.arrow_back_rounded,
-                        color: AetheraTokens.moonGlow, size: 20),
+                    child: Icon(
+                      Icons.arrow_back_rounded,
+                      color: AetheraTokens.moonGlow,
+                      size: 20,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 14),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Ritual Semanal',
-                        style: AetheraTokens.displaySmall()),
-                    Text('Semana $week',
-                        style: AetheraTokens.bodySmall(
-                            color: AetheraTokens.moonGlow)),
+                    Text('Ritual Semanal', style: AetheraTokens.displaySmall()),
+                    Text(
+                      'Semana $week',
+                      style: AetheraTokens.bodySmall(
+                        color: AetheraTokens.moonGlow,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -315,21 +395,30 @@ class _AlreadyCompletedView extends StatelessWidget {
 
             // Completed badge
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 color: AetheraTokens.auroraTeal.withValues(alpha: 0.08),
                 border: Border.all(
-                    color: AetheraTokens.auroraTeal.withValues(alpha: 0.3)),
+                  color: AetheraTokens.auroraTeal.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('✓ ', style: TextStyle(color: AetheraTokens.auroraTeal, fontSize: 16)),
-                  Text('Tu ritual de esta semana está completo',
-                      style: AetheraTokens.bodyMedium(
-                          color: AetheraTokens.auroraTeal)),
+                  const Text(
+                    '✓ ',
+                    style: TextStyle(
+                      color: AetheraTokens.auroraTeal,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    'Tu ritual de esta semana está completo',
+                    style: AetheraTokens.bodyMedium(
+                      color: AetheraTokens.auroraTeal,
+                    ),
+                  ),
                 ],
               ),
             ).animate().fadeIn(delay: 200.ms),
@@ -349,6 +438,15 @@ class _AlreadyCompletedView extends StatelessWidget {
               const SizedBox(height: 20),
             ],
 
+            _SyncLiveCard(
+              state: state,
+              onInvite: onInviteSync,
+              onHoldStart: onSyncHoldStart,
+              onHoldEnd: onSyncHoldEnd,
+            ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.08, end: 0),
+
+            const SizedBox(height: 20),
+
             // Partner section
             if (state.partnerCompleted) ...[
               AetheraButton(
@@ -366,14 +464,19 @@ class _AlreadyCompletedView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Esperando su respuesta...',
-                              style: AetheraTokens.bodyMedium(
-                                  color: AetheraTokens.starlight)),
+                          Text(
+                            'Esperando su respuesta...',
+                            style: AetheraTokens.bodyMedium(
+                              color: AetheraTokens.starlight,
+                            ),
+                          ),
                           const SizedBox(height: 4),
                           Text(
-                              'Te avisaremos cuando complete su ritual',
-                              style: AetheraTokens.bodySmall(
-                                  color: AetheraTokens.moonGlow)),
+                            'Te avisaremos cuando complete su ritual',
+                            style: AetheraTokens.bodySmall(
+                              color: AetheraTokens.moonGlow,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -419,16 +522,15 @@ class _CartaCard extends StatelessWidget {
             children: [
               Text(emoji, style: const TextStyle(fontSize: 18)),
               const SizedBox(width: 8),
-              Text(label,
-                  style:
-                      AetheraTokens.labelLarge(color: accentColor)),
+              Text(label, style: AetheraTokens.labelLarge(color: accentColor)),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             question,
-            style: AetheraTokens.bodySmall(color: AetheraTokens.dusk)
-                .copyWith(fontStyle: FontStyle.italic),
+            style: AetheraTokens.bodySmall(
+              color: AetheraTokens.dusk,
+            ).copyWith(fontStyle: FontStyle.italic),
           ),
           const SizedBox(height: 10),
           Text(answer, style: AetheraTokens.bodyMedium()),
@@ -436,20 +538,25 @@ class _CartaCard extends StatelessWidget {
             const SizedBox(height: 14),
             Divider(color: AetheraTokens.moonGlow.withValues(alpha: 0.15)),
             const SizedBox(height: 10),
-            ...cleanGratitude.asMap().entries.map((e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${e.key + 1}.  ',
-                          style: AetheraTokens.bodySmall(
-                              color: AetheraTokens.roseQuartz)),
-                      Expanded(
-                          child: Text(e.value,
-                              style: AetheraTokens.bodySmall())),
-                    ],
-                  ),
-                )),
+            ...cleanGratitude.asMap().entries.map(
+              (e) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${e.key + 1}.  ',
+                      style: AetheraTokens.bodySmall(
+                        color: AetheraTokens.roseQuartz,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(e.value, style: AetheraTokens.bodySmall()),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -472,8 +579,9 @@ class _PulsingDotState extends State<_PulsingDot>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat(reverse: true);
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -486,38 +594,259 @@ class _PulsingDotState extends State<_PulsingDot>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) => Container(
-        width: 10,
-        height: 10,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AetheraTokens.nebulaPurple
-              .withValues(alpha: 0.4 + _ctrl.value * 0.6),
-          boxShadow: [
-            BoxShadow(
-              color: AetheraTokens.nebulaPurple
-                  .withValues(alpha: _ctrl.value * 0.5),
-              blurRadius: 8,
-              spreadRadius: 2,
+      builder:
+          (_, __) => Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AetheraTokens.nebulaPurple.withValues(
+                alpha: 0.4 + _ctrl.value * 0.6,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AetheraTokens.nebulaPurple.withValues(
+                    alpha: _ctrl.value * 0.5,
+                  ),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }
 
 // ─── Page 1: La Pregunta ──────────────────────────────────────────────────────
 
+class _SyncLiveCard extends StatelessWidget {
+  final RitualState state;
+  final VoidCallback onInvite;
+  final VoidCallback onHoldStart;
+  final VoidCallback onHoldEnd;
+
+  const _SyncLiveCard({
+    required this.state,
+    required this.onInvite,
+    required this.onHoldStart,
+    required this.onHoldEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = state.syncProgress.clamp(0.0, 1.0);
+    final bothHolding = state.syncMeHolding && state.syncPartnerHolding;
+
+    return AetheraGlassPanel(
+      padding: const EdgeInsets.all(18),
+      borderColor:
+          state.syncCompleted
+              ? AetheraTokens.auroraTeal.withValues(alpha: 0.38)
+              : Colors.white.withValues(alpha: 0.16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                state.syncCompleted ? '✨' : '⚡',
+                style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Sincronía en vivo',
+                style: AetheraTokens.labelLarge(
+                  color:
+                      state.syncCompleted
+                          ? AetheraTokens.auroraTeal
+                          : AetheraTokens.starlight,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${AppConstants.syncRitualSeconds}s',
+                style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (state.syncCompleted) ...[
+            Text(
+              'Evento desbloqueado: ${state.syncEvent ?? 'Ritual completo'}',
+              style: AetheraTokens.bodyMedium(color: AetheraTokens.auroraTeal),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '+${AppConstants.pointsSyncRitual} Conexión · Reliquia añadida al universo',
+              style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+            ),
+          ] else ...[
+            Row(
+              children: [
+                _SyncBadge(label: 'Tú', active: state.syncMeHolding),
+                const SizedBox(width: 8),
+                _SyncBadge(label: 'Pareja', active: state.syncPartnerHolding),
+                const Spacer(),
+                Text(
+                  bothHolding ? 'Sincronizando...' : 'Esperando sincronía',
+                  style: AetheraTokens.bodySmall(
+                    color:
+                        bothHolding
+                            ? AetheraTokens.auroraTeal
+                            : AetheraTokens.moonGlow,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                backgroundColor: Colors.white.withValues(alpha: 0.08),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AetheraTokens.auroraTeal,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              bothHolding
+                  ? 'Faltan ${state.syncSecondsLeft}s para desbloquear evento cósmico'
+                  : 'Mantengan presionado al mismo tiempo para iniciar la cuenta',
+              style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: AetheraButton(
+                    label: 'Invitar',
+                    variant: AetheraButtonVariant.outlined,
+                    onPressed: onInvite,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GestureDetector(
+                    onLongPressStart: (_) => onHoldStart(),
+                    onLongPressEnd: (_) => onHoldEnd(),
+                    onLongPressCancel: onHoldEnd,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      height: 52,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient:
+                            state.syncMeHolding
+                                ? LinearGradient(
+                                  colors: [
+                                    AetheraTokens.auroraTeal.withValues(
+                                      alpha: 0.35,
+                                    ),
+                                    AetheraTokens.nebulaPurple.withValues(
+                                      alpha: 0.28,
+                                    ),
+                                  ],
+                                )
+                                : null,
+                        color:
+                            state.syncMeHolding
+                                ? null
+                                : Colors.white.withValues(alpha: 0.06),
+                        border: Border.all(
+                          color:
+                              state.syncMeHolding
+                                  ? AetheraTokens.auroraTeal.withValues(
+                                    alpha: 0.7,
+                                  )
+                                  : Colors.white.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          state.syncMeHolding
+                              ? 'SINCRONIZANDO...'
+                              : 'MANTENER 60S',
+                          style: AetheraTokens.labelLarge(
+                            color:
+                                state.syncMeHolding
+                                    ? AetheraTokens.starlight
+                                    : AetheraTokens.moonGlow,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SyncBadge extends StatelessWidget {
+  final String label;
+  final bool active;
+
+  const _SyncBadge({required this.label, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color:
+            active
+                ? AetheraTokens.auroraTeal.withValues(alpha: 0.2)
+                : Colors.white.withValues(alpha: 0.06),
+        border: Border.all(
+          color:
+              active
+                  ? AetheraTokens.auroraTeal.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.14),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active ? AetheraTokens.auroraTeal : AetheraTokens.moonGlow,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AetheraTokens.bodySmall(
+              color: active ? AetheraTokens.auroraTeal : AetheraTokens.moonGlow,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _QuestionPage extends StatefulWidget {
   final String question;
   final TextEditingController controller;
   final VoidCallback onNext;
 
-  const _QuestionPage(
-      {required this.question,
-      required this.controller,
-      required this.onNext});
+  const _QuestionPage({
+    required this.question,
+    required this.controller,
+    required this.onNext,
+  });
 
   @override
   State<_QuestionPage> createState() => _QuestionPageState();
@@ -530,7 +859,8 @@ class _QuestionPageState extends State<_QuestionPage> {
   void initState() {
     super.initState();
     widget.controller.addListener(
-        () => setState(() => _hasText = widget.controller.text.isNotEmpty));
+      () => setState(() => _hasText = widget.controller.text.isNotEmpty),
+    );
   }
 
   @override
@@ -554,36 +884,38 @@ class _QuestionPageState extends State<_QuestionPage> {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 5),
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: AetheraTokens.nebulaPurple
-                              .withValues(alpha: 0.5)),
+                        color: AetheraTokens.nebulaPurple.withValues(
+                          alpha: 0.5,
+                        ),
+                      ),
                       color: AetheraTokens.nebulaPurple.withValues(alpha: 0.1),
                     ),
                     child: Text(
                       'RITUAL SEMANAL · SEMANA $week',
                       style: AetheraTokens.labelSmall(
-                          color: AetheraTokens.nebulaPurple),
+                        color: AetheraTokens.nebulaPurple,
+                      ),
                     ),
                   ),
                 ],
-              )
-                  .animate()
-                  .fadeIn(duration: 600.ms)
-                  .slideX(begin: -0.1, end: 0),
+              ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.1, end: 0),
 
               const SizedBox(height: 40),
 
               Text(
-                widget.question,
-                style: AetheraTokens.displayMedium().copyWith(
-                  fontSize: 28,
-                  height: 1.4,
-                  letterSpacing: 0.5,
-                ),
-              )
+                    widget.question,
+                    style: AetheraTokens.displayMedium().copyWith(
+                      fontSize: 28,
+                      height: 1.4,
+                      letterSpacing: 0.5,
+                    ),
+                  )
                   .animate()
                   .fadeIn(delay: 200.ms, duration: 800.ms)
                   .slideY(begin: 0.15, end: 0, curve: Curves.easeOut),
@@ -594,38 +926,39 @@ class _QuestionPageState extends State<_QuestionPage> {
                 width: 48,
                 height: 2,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [
-                    AetheraTokens.auroraTeal,
-                    AetheraTokens.nebulaPurple,
-                  ]),
+                  gradient: LinearGradient(
+                    colors: [
+                      AetheraTokens.auroraTeal,
+                      AetheraTokens.nebulaPurple,
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(1),
                 ),
-              )
-                  .animate()
-                  .fadeIn(delay: 500.ms)
-                  .slideX(begin: -0.3, end: 0),
+              ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.3, end: 0),
 
               const SizedBox(height: 36),
 
               AetheraGlassPanel(
-                padding: const EdgeInsets.all(20),
-                child: TextField(
-                  controller: widget.controller,
-                  maxLines: 6,
-                  minLines: 4,
-                  style: AetheraTokens.bodyLarge(
-                      color: AetheraTokens.starlight),
-                  decoration: InputDecoration(
-                    hintText:
-                        'Escribe con honestidad... este espacio es solo para nosotros.',
-                    hintStyle: AetheraTokens.bodyMedium(
-                        color: AetheraTokens.moonGlow.withValues(alpha: 0.5)),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                  ),
-                ),
-              )
+                    padding: const EdgeInsets.all(20),
+                    child: TextField(
+                      controller: widget.controller,
+                      maxLines: 6,
+                      minLines: 4,
+                      style: AetheraTokens.bodyLarge(
+                        color: AetheraTokens.starlight,
+                      ),
+                      decoration: InputDecoration(
+                        hintText:
+                            'Escribe con honestidad... este espacio es solo para nosotros.',
+                        hintStyle: AetheraTokens.bodyMedium(
+                          color: AetheraTokens.moonGlow.withValues(alpha: 0.5),
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                      ),
+                    ),
+                  )
                   .animate()
                   .fadeIn(delay: 400.ms, duration: 700.ms)
                   .slideY(begin: 0.1, end: 0),
@@ -677,14 +1010,15 @@ class _GratitudePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [
-                    AetheraTokens.roseQuartz,
-                    AetheraTokens.nebulaPurple
-                  ],
-                ).createShader(bounds),
-                child: const Text('💕', style: TextStyle(fontSize: 48)),
-              )
+                    shaderCallback:
+                        (bounds) => const LinearGradient(
+                          colors: [
+                            AetheraTokens.roseQuartz,
+                            AetheraTokens.nebulaPurple,
+                          ],
+                        ).createShader(bounds),
+                    child: const Text('💕', style: TextStyle(fontSize: 48)),
+                  )
                   .animate()
                   .fadeIn(duration: 600.ms)
                   .scale(begin: const Offset(0.5, 0.5), curve: Curves.easeOut),
@@ -700,8 +1034,7 @@ class _GratitudePage extends StatelessWidget {
 
               Text(
                 '¿Qué amas de él/ella esta semana?',
-                style: AetheraTokens.bodyLarge(
-                    color: AetheraTokens.moonGlow),
+                style: AetheraTokens.bodyLarge(color: AetheraTokens.moonGlow),
               ).animate().fadeIn(delay: 200.ms),
 
               const SizedBox(height: 36),
@@ -717,26 +1050,35 @@ class _GratitudePage extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 16),
                   child: AetheraGlassPanel(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 4),
+                      horizontal: 20,
+                      vertical: 4,
+                    ),
                     child: Row(
                       children: [
-                        Text(prefix,
-                            style: AetheraTokens.bodyLarge(
-                                color: AetheraTokens.roseQuartz)),
+                        Text(
+                          prefix,
+                          style: AetheraTokens.bodyLarge(
+                            color: AetheraTokens.roseQuartz,
+                          ),
+                        ),
                         Expanded(
                           child: TextField(
                             controller: ctrl,
                             style: AetheraTokens.bodyLarge(
-                                color: AetheraTokens.starlight),
+                              color: AetheraTokens.starlight,
+                            ),
                             decoration: InputDecoration(
-                              hintText: [
-                                'Tu forma de hacerme reír...',
-                                'Cómo me haces sentir especial...',
-                                'Algo que admiro de ti...',
-                              ][i],
+                              hintText:
+                                  [
+                                    'Tu forma de hacerme reír...',
+                                    'Cómo me haces sentir especial...',
+                                    'Algo que admiro de ti...',
+                                  ][i],
                               hintStyle: AetheraTokens.bodyMedium(
-                                  color: AetheraTokens.moonGlow
-                                      .withValues(alpha: 0.4)),
+                                color: AetheraTokens.moonGlow.withValues(
+                                  alpha: 0.4,
+                                ),
+                              ),
                               border: InputBorder.none,
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
@@ -746,8 +1088,9 @@ class _GratitudePage extends StatelessWidget {
                       ],
                     ),
                   ).animate().fadeIn(
-                      delay: Duration(milliseconds: 300 + i * 120),
-                      duration: 500.ms),
+                    delay: Duration(milliseconds: 300 + i * 120),
+                    duration: 500.ms,
+                  ),
                 );
               }),
 
@@ -771,14 +1114,20 @@ class _GratitudePage extends StatelessWidget {
 class _CelebrationPage extends StatelessWidget {
   final AnimationController animCtrl;
   final AnimationController pulseCtrl;
-  final bool partnerCompleted;
+  final RitualState ritualState;
+  final VoidCallback onInviteSync;
+  final VoidCallback onSyncHoldStart;
+  final VoidCallback onSyncHoldEnd;
   final VoidCallback onViewPartnerCarta;
   final VoidCallback onClose;
 
   const _CelebrationPage({
     required this.animCtrl,
     required this.pulseCtrl,
-    required this.partnerCompleted,
+    required this.ritualState,
+    required this.onInviteSync,
+    required this.onSyncHoldStart,
+    required this.onSyncHoldEnd,
     required this.onViewPartnerCarta,
     required this.onClose,
   });
@@ -787,115 +1136,149 @@ class _CelebrationPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: animCtrl,
-      builder: (_, __) => Stack(
-        fit: StackFit.expand,
-        children: [
-          CustomPaint(painter: _ParticlePainter(progress: animCtrl.value)),
-          SafeArea(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: pulseCtrl,
-                    builder: (_, __) => Transform.scale(
-                      scale: 1.0 + pulseCtrl.value * 0.15,
-                      child: const Text('💕',
-                          style: TextStyle(fontSize: 80)),
-                    ),
-                  )
-                      .animate()
-                      .scale(
-                          begin: const Offset(0.0, 0.0),
-                          end: const Offset(1.0, 1.0),
-                          duration: 800.ms,
-                          curve: Curves.elasticOut),
+      builder:
+          (_, __) => Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomPaint(painter: _ParticlePainter(progress: animCtrl.value)),
+              SafeArea(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedBuilder(
+                        animation: pulseCtrl,
+                        builder:
+                            (_, __) => Transform.scale(
+                              scale: 1.0 + pulseCtrl.value * 0.15,
+                              child: const Text(
+                                '💕',
+                                style: TextStyle(fontSize: 80),
+                              ),
+                            ),
+                      ).animate().scale(
+                        begin: const Offset(0.0, 0.0),
+                        end: const Offset(1.0, 1.0),
+                        duration: 800.ms,
+                        curve: Curves.elasticOut,
+                      ),
 
-                  const SizedBox(height: 32),
+                      const SizedBox(height: 32),
 
-                  Text(
-                    'Ritual completado',
-                    style: AetheraTokens.displayMedium()
-                        .copyWith(letterSpacing: 3),
-                  )
-                      .animate()
-                      .fadeIn(delay: 500.ms, duration: 600.ms)
-                      .slideY(begin: 0.2, end: 0),
+                      Text(
+                            'Ritual completado',
+                            style: AetheraTokens.displayMedium().copyWith(
+                              letterSpacing: 3,
+                            ),
+                          )
+                          .animate()
+                          .fadeIn(delay: 500.ms, duration: 600.ms)
+                          .slideY(begin: 0.2, end: 0),
 
-                  const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-                  Text(
-                    'Tu respuesta viaja hacia él/ella',
-                    style: AetheraTokens.bodyMedium(
-                        color: AetheraTokens.moonGlow),
-                    textAlign: TextAlign.center,
-                  ).animate().fadeIn(delay: 700.ms),
+                      Text(
+                        'Tu respuesta viaja hacia él/ella',
+                        style: AetheraTokens.bodyMedium(
+                          color: AetheraTokens.moonGlow,
+                        ),
+                        textAlign: TextAlign.center,
+                      ).animate().fadeIn(delay: 700.ms),
 
-                  const SizedBox(height: 28),
+                      const SizedBox(height: 28),
 
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
-                      gradient: LinearGradient(colors: [
-                        AetheraTokens.auroraTeal.withValues(alpha: 0.2),
-                        AetheraTokens.nebulaPurple.withValues(alpha: 0.2),
-                      ]),
-                      border: Border.all(
-                          color: AetheraTokens.auroraTeal
-                              .withValues(alpha: 0.4)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('✦',
-                            style: TextStyle(
-                                color: AetheraTokens.auroraTeal,
-                                fontSize: 14)),
-                        const SizedBox(width: 8),
-                        Text('+15 Conexión',
-                            style: AetheraTokens.labelLarge(
-                                color: AetheraTokens.auroraTeal)),
-                      ],
-                    ),
-                  )
-                      .animate()
-                      .fadeIn(delay: 900.ms)
-                      .slideY(begin: 0.3, end: 0),
+                      Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30),
+                              gradient: LinearGradient(
+                                colors: [
+                                  AetheraTokens.auroraTeal.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  AetheraTokens.nebulaPurple.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                ],
+                              ),
+                              border: Border.all(
+                                color: AetheraTokens.auroraTeal.withValues(
+                                  alpha: 0.4,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  '✦',
+                                  style: TextStyle(
+                                    color: AetheraTokens.auroraTeal,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '+15 Conexión',
+                                  style: AetheraTokens.labelLarge(
+                                    color: AetheraTokens.auroraTeal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                          .animate()
+                          .fadeIn(delay: 900.ms)
+                          .slideY(begin: 0.3, end: 0),
 
-                  const SizedBox(height: 40),
+                      const SizedBox(height: 20),
 
-                  // Partner carta button — appears if partner has completed
-                  if (partnerCompleted)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: AetheraButton(
-                        label: 'Leer su carta  💌',
-                        onPressed: onViewPartnerCarta,
-                      ).animate().fadeIn(delay: 1100.ms).slideY(begin: 0.2, end: 0),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        'Esperando su respuesta...',
-                        style: AetheraTokens.bodySmall(
-                            color: AetheraTokens.dusk),
-                      ).animate().fadeIn(delay: 1100.ms),
-                    ),
+                      _SyncLiveCard(
+                        state: ritualState,
+                        onInvite: onInviteSync,
+                        onHoldStart: onSyncHoldStart,
+                        onHoldEnd: onSyncHoldEnd,
+                      ).animate().fadeIn(delay: 1000.ms),
 
-                  AetheraButton(
-                    label: 'Volver al universo',
-                    variant: AetheraButtonVariant.outlined,
-                    onPressed: onClose,
-                  ).animate().fadeIn(delay: 1300.ms),
-                ],
+                      const SizedBox(height: 40),
+
+                      // Partner carta button — appears if partner has completed
+                      if (ritualState.partnerCompleted)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: AetheraButton(
+                                label: 'Leer su carta  💌',
+                                onPressed: onViewPartnerCarta,
+                              )
+                              .animate()
+                              .fadeIn(delay: 1100.ms)
+                              .slideY(begin: 0.2, end: 0),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            'Esperando su respuesta...',
+                            style: AetheraTokens.bodySmall(
+                              color: AetheraTokens.dusk,
+                            ),
+                          ).animate().fadeIn(delay: 1100.ms),
+                        ),
+
+                      AetheraButton(
+                        label: 'Volver al universo',
+                        variant: AetheraButtonVariant.outlined,
+                        onPressed: onClose,
+                      ).animate().fadeIn(delay: 1300.ms),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
@@ -927,9 +1310,8 @@ class _PartnerCartaPage extends StatelessWidget {
       animation: revealCtrl,
       builder: (_, __) {
         final reveal = Curves.easeOutCubic.transform(revealCtrl.value);
-        final cleanGratitude = (partnerGratitude ?? [])
-            .where((g) => g.trim().isNotEmpty)
-            .toList();
+        final cleanGratitude =
+            (partnerGratitude ?? []).where((g) => g.trim().isNotEmpty).toList();
 
         return Stack(
           fit: StackFit.expand,
@@ -954,9 +1336,7 @@ class _PartnerCartaPage extends StatelessWidget {
                           children: [
                             Text(
                               '💌',
-                              style: TextStyle(
-                                fontSize: 20 + reveal * 44,
-                              ),
+                              style: TextStyle(fontSize: 20 + reveal * 44),
                             ),
                             const SizedBox(height: 8),
                             Text(
@@ -982,8 +1362,9 @@ class _PartnerCartaPage extends StatelessWidget {
                           child: AetheraGlassPanel(
                             backgroundColor: AetheraTokens.roseQuartz
                                 .withValues(alpha: 0.06),
-                            borderColor: AetheraTokens.roseQuartz
-                                .withValues(alpha: 0.25),
+                            borderColor: AetheraTokens.roseQuartz.withValues(
+                              alpha: 0.25,
+                            ),
                             padding: const EdgeInsets.all(24),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -992,8 +1373,8 @@ class _PartnerCartaPage extends StatelessWidget {
                                 Text(
                                   question,
                                   style: AetheraTokens.bodySmall(
-                                          color: AetheraTokens.dusk)
-                                      .copyWith(fontStyle: FontStyle.italic),
+                                    color: AetheraTokens.dusk,
+                                  ).copyWith(fontStyle: FontStyle.italic),
                                 ),
 
                                 const SizedBox(height: 16),
@@ -1002,12 +1383,15 @@ class _PartnerCartaPage extends StatelessWidget {
                                 Container(
                                   height: 1,
                                   decoration: BoxDecoration(
-                                    gradient: LinearGradient(colors: [
-                                      Colors.transparent,
-                                      AetheraTokens.roseQuartz
-                                          .withValues(alpha: 0.5),
-                                      Colors.transparent,
-                                    ]),
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.transparent,
+                                        AetheraTokens.roseQuartz.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                        Colors.transparent,
+                                      ],
+                                    ),
                                   ),
                                 ),
 
@@ -1026,37 +1410,47 @@ class _PartnerCartaPage extends StatelessWidget {
 
                                   Row(
                                     children: [
-                                      const Text('💕',
-                                          style: TextStyle(fontSize: 14)),
+                                      const Text(
+                                        '💕',
+                                        style: TextStyle(fontSize: 14),
+                                      ),
                                       const SizedBox(width: 8),
-                                      Text('Con gratitud',
-                                          style: AetheraTokens.labelLarge(
-                                              color: AetheraTokens.roseQuartz)),
+                                      Text(
+                                        'Con gratitud',
+                                        style: AetheraTokens.labelLarge(
+                                          color: AetheraTokens.roseQuartz,
+                                        ),
+                                      ),
                                     ],
                                   ),
 
                                   const SizedBox(height: 12),
 
-                                  ...cleanGratitude.asMap().entries.map((e) =>
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 10),
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text('${e.key + 1}.  ',
-                                                style: AetheraTokens.bodyMedium(
-                                                    color: AetheraTokens
-                                                        .roseQuartz)),
-                                            Expanded(
-                                              child: Text(e.value,
-                                                  style: AetheraTokens
-                                                      .bodyMedium()),
+                                  ...cleanGratitude.asMap().entries.map(
+                                    (e) => Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 10,
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '${e.key + 1}.  ',
+                                            style: AetheraTokens.bodyMedium(
+                                              color: AetheraTokens.roseQuartz,
                                             ),
-                                          ],
-                                        ),
-                                      )),
+                                          ),
+                                          Expanded(
+                                            child: Text(
+                                              e.value,
+                                              style: AetheraTokens.bodyMedium(),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ],
 
                                 const SizedBox(height: 20),
@@ -1067,7 +1461,8 @@ class _PartnerCartaPage extends StatelessWidget {
                                   child: Text(
                                     'Con amor  ✦',
                                     style: AetheraTokens.bodyMedium(
-                                        color: AetheraTokens.roseQuartz),
+                                      color: AetheraTokens.roseQuartz,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1111,15 +1506,15 @@ class _WaitingForPartner extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('🌙', style: TextStyle(fontSize: 64))
-                  .animate()
-                  .fadeIn()
-                  .scale(curve: Curves.elasticOut),
+              const Text(
+                '🌙',
+                style: TextStyle(fontSize: 64),
+              ).animate().fadeIn().scale(curve: Curves.elasticOut),
               const SizedBox(height: 28),
-              Text('Aún no ha respondido',
-                  style: AetheraTokens.displaySmall())
-                  .animate()
-                  .fadeIn(delay: 300.ms),
+              Text(
+                'Aún no ha respondido',
+                style: AetheraTokens.displaySmall(),
+              ).animate().fadeIn(delay: 300.ms),
               const SizedBox(height: 12),
               Text(
                 'Cuando complete su ritual, su carta aparecerá aquí.',
@@ -1153,18 +1548,20 @@ class _ParticlePainter extends CustomPainter {
     return List.generate(60, (i) {
       final angle = (i / 60) * 2 * pi + rng.nextDouble() * 0.3;
       final speed = 0.3 + rng.nextDouble() * 0.7;
-      final color = [
-        AetheraTokens.auroraTeal,
-        AetheraTokens.roseQuartz,
-        AetheraTokens.nebulaPurple,
-        AetheraTokens.starlight,
-        AetheraTokens.goldenDawn,
-      ][rng.nextInt(5)];
+      final color =
+          [
+            AetheraTokens.auroraTeal,
+            AetheraTokens.roseQuartz,
+            AetheraTokens.nebulaPurple,
+            AetheraTokens.starlight,
+            AetheraTokens.goldenDawn,
+          ][rng.nextInt(5)];
       return _Particle(
-          angle: angle,
-          speed: speed,
-          color: color,
-          size: 2 + rng.nextDouble() * 4);
+        angle: angle,
+        speed: speed,
+        color: color,
+        size: 2 + rng.nextDouble() * 4,
+      );
     });
   }
 
@@ -1174,9 +1571,10 @@ class _ParticlePainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2;
     final maxR = size.width * 0.8;
-    final fade = progress < 0.2
-        ? progress / 0.2
-        : progress > 0.7
+    final fade =
+        progress < 0.2
+            ? progress / 0.2
+            : progress > 0.7
             ? 1.0 - (progress - 0.7) / 0.3
             : 1.0;
     for (final p in _particles) {
@@ -1222,8 +1620,7 @@ class _CartaParticlePainter extends CustomPainter {
             AetheraTokens.roseQuartz,
             AetheraTokens.nebulaPurple,
             AetheraTokens.goldenDawn,
-          ][rng.nextInt(3)]
-              .withValues(alpha: fade * 0.9),
+          ][rng.nextInt(3)].withValues(alpha: fade * 0.9),
       );
     }
   }
@@ -1238,9 +1635,10 @@ class _Particle {
   final Color color;
   final double size;
 
-  const _Particle(
-      {required this.angle,
-      required this.speed,
-      required this.color,
-      required this.size});
+  const _Particle({
+    required this.angle,
+    required this.speed,
+    required this.color,
+    required this.size,
+  });
 }
