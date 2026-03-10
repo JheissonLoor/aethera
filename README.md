@@ -179,4 +179,4 @@ flutter test
 ## Autor
 
 **Jheisson Loor**  
-Ingeniero Mobile enfocado en experiencias Flutter orientadas a producto, arquitectura en tiempo real y ejecución visual premium.
+Ingeniero Mobile enfocado en experiencias Flutter orientadas a producto, arquitectura en tiempo real y ejecución visual.
