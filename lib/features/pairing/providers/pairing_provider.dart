@@ -1,6 +1,5 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
-import 'package:flutter_riverpod/legacy.dart'
-    show StateNotifier, StateNotifierProvider;
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show Notifier, NotifierProvider, Provider;
 import 'package:aethera/core/services/couple_service.dart';
 import 'package:aethera/core/providers/app_state_notifier.dart';
 import 'package:aethera/shared/models/couple_model.dart';
@@ -24,10 +23,11 @@ class PairingState {
       );
 }
 
-class PairingNotifier extends StateNotifier<PairingState> {
-  PairingNotifier(this._service) : super(const PairingState());
+class PairingNotifier extends Notifier<PairingState> {
+  CoupleService get _service => ref.read(coupleServiceProvider);
 
-  final CoupleService _service;
+  @override
+  PairingState build() => const PairingState();
 
   /// Creates a new couple for [userId] and stores the code.
   /// Does NOT redirect — call [enterSolo] to proceed to universe.
@@ -68,5 +68,4 @@ class PairingNotifier extends StateNotifier<PairingState> {
 }
 
 final pairingProvider =
-    StateNotifierProvider<PairingNotifier, PairingState>((ref) =>
-        PairingNotifier(ref.watch(coupleServiceProvider)));
+    NotifierProvider<PairingNotifier, PairingState>(PairingNotifier.new);
