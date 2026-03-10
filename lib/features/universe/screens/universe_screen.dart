@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +32,8 @@ class UniverseScreen extends ConsumerStatefulWidget {
 
 class _UniverseScreenState extends ConsumerState<UniverseScreen> {
   String? _lastMood;
+  String? _lastCutsceneMemoryId;
+  Timer? _cosmicCutsceneTimer;
 
   @override
   void initState() {
@@ -42,6 +45,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
 
   @override
   void dispose() {
+    _cosmicCutsceneTimer?.cancel();
     MusicService.instance.stop();
     super.dispose();
   }
@@ -49,6 +53,19 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(universeProvider);
+
+    if (state.cosmicEventMemoryId != null &&
+        _lastCutsceneMemoryId != state.cosmicEventMemoryId) {
+      _lastCutsceneMemoryId = state.cosmicEventMemoryId;
+      _cosmicCutsceneTimer?.cancel();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _cosmicCutsceneTimer = Timer(const Duration(milliseconds: 4600), () {
+          if (mounted) {
+            ref.read(universeProvider.notifier).dismissCosmicEventCutscene();
+          }
+        });
+      });
+    }
 
     // Update music volume when emotion changes
     final currentMood = state.combinedMood;
@@ -95,7 +112,9 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
           ..._buildMemoryObjects(context, state),
 
           // ── Layer 6: Heartbeat (partner online or received pulse) ──
-          HeartbeatOverlay(isActive: state.partnerOnline || state.receivedPulse),
+          HeartbeatOverlay(
+            isActive: state.partnerOnline || state.receivedPulse,
+          ),
 
           // ── Layer 7.5: New memory notification toast ──────────────────
           if (state.newMemoryFromPartner)
@@ -112,9 +131,9 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
           // ── Emotion feedback overlay ──────────────────────────────────
           if (state.emotionFeedback != null)
             Positioned.fill(
-              child: _EmotionRippleOverlay(mood: state.emotionFeedback!)
-                  .animate()
-                  .fadeIn(duration: 300.ms),
+              child: _EmotionRippleOverlay(
+                mood: state.emotionFeedback!,
+              ).animate().fadeIn(duration: 300.ms),
             ),
 
           // ── Incoming wish overlay (shooting star from partner) ────────
@@ -122,8 +141,23 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
             Positioned.fill(
               child: _IncomingWishOverlay(
                 wish: state.incomingWish!,
-                onSeen: () => ref.read(universeProvider.notifier).markWishSeen(),
+                onSeen:
+                    () => ref.read(universeProvider.notifier).markWishSeen(),
               ).animate().fadeIn(duration: 400.ms),
+            ),
+
+          // â”€â”€ Cosmic event cutscene overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          if (state.cosmicEventName != null)
+            Positioned.fill(
+              child: _CosmicEventCutsceneOverlay(
+                eventName: state.cosmicEventName!,
+                onSkip: () {
+                  _cosmicCutsceneTimer?.cancel();
+                  ref
+                      .read(universeProvider.notifier)
+                      .dismissCosmicEventCutscene();
+                },
+              ),
             ),
 
           // ── Solo mode invite banner ───────────────────────────────
@@ -143,10 +177,15 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
             child: Column(
               children: [
                 // Top bar
-                _TopBar(state: state).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2),
+                _TopBar(
+                  state: state,
+                ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2),
                 const Spacer(),
                 // Bottom action bar
-                _BottomBar(state: state).animate().fadeIn(duration: 800.ms, delay: 200.ms).slideY(begin: 0.2),
+                _BottomBar(state: state)
+                    .animate()
+                    .fadeIn(duration: 800.ms, delay: 200.ms)
+                    .slideY(begin: 0.2),
                 const SizedBox(height: 16),
               ],
             ),
@@ -156,7 +195,10 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
     );
   }
 
-  List<Widget> _buildMemoryObjects(BuildContext context, UniverseAppState state) {
+  List<Widget> _buildMemoryObjects(
+    BuildContext context,
+    UniverseAppState state,
+  ) {
     final size = MediaQuery.of(context).size;
     return state.memories.indexed.map((entry) {
       final (index, memory) = entry;
@@ -166,17 +208,24 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
         child: MemoryObjectWidget(
           memory: memory,
           animationIndex: index,
-          onTap: () => _showMemoryDetail(context, memory.title, memory.description),
+          onTap:
+              () =>
+                  _showMemoryDetail(context, memory.title, memory.description),
         ),
       );
     }).toList();
   }
 
-  void _showMemoryDetail(BuildContext context, String title, String description) {
+  void _showMemoryDetail(
+    BuildContext context,
+    String title,
+    String description,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _MemoryDetailSheet(title: title, description: description),
+      builder:
+          (_) => _MemoryDetailSheet(title: title, description: description),
     );
   }
 
@@ -185,14 +234,15 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _GoalDetailSheet(
-        goal: goal,
-        onUpdateProgress: (progress) async {
-          await ref
-              .read(universeProvider.notifier)
-              .updateGoalProgress(goal.id, progress);
-        },
-      ),
+      builder:
+          (_) => _GoalDetailSheet(
+            goal: goal,
+            onUpdateProgress: (progress) async {
+              await ref
+                  .read(universeProvider.notifier)
+                  .updateGoalProgress(goal.id, progress);
+            },
+          ),
     );
   }
 }
@@ -232,10 +282,14 @@ class _TopBar extends ConsumerWidget {
                       shape: BoxShape.circle,
                       color: Colors.white.withValues(alpha: 0.06),
                       border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.12)),
+                        color: Colors.white.withValues(alpha: 0.12),
+                      ),
                     ),
-                    child: Icon(Icons.person_outline_rounded,
-                        color: AetheraTokens.moonGlow, size: 14),
+                    child: Icon(
+                      Icons.person_outline_rounded,
+                      color: AetheraTokens.moonGlow,
+                      size: 14,
+                    ),
                   ),
                 ),
               ],
@@ -274,9 +328,10 @@ class _TopBar extends ConsumerWidget {
                         height: 11,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: state.receivedPulse
-                              ? AetheraTokens.roseQuartz
-                              : state.partnerOnline
+                          color:
+                              state.receivedPulse
+                                  ? AetheraTokens.roseQuartz
+                                  : state.partnerOnline
                                   ? AetheraTokens.auroraTeal
                                   : AetheraTokens.dusk,
                           border: Border.all(
@@ -329,7 +384,8 @@ class _ConnectionBar extends StatelessWidget {
             minHeight: 3,
             backgroundColor: Colors.white.withValues(alpha: 0.08),
             valueColor: const AlwaysStoppedAnimation<Color>(
-                AetheraTokens.auroraTeal),
+              AetheraTokens.auroraTeal,
+            ),
           ),
         ),
       ],
@@ -427,13 +483,14 @@ class _BottomBar extends ConsumerWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _EmotionCheckInSheet(
-        currentMood: currentMood,
-        onSelect: (mood) {
-          Navigator.of(context).pop();
-          ref.read(universeProvider.notifier).updateEmotion(mood);
-        },
-      ),
+      builder:
+          (_) => _EmotionCheckInSheet(
+            currentMood: currentMood,
+            onSelect: (mood) {
+              Navigator.of(context).pop();
+              ref.read(universeProvider.notifier).updateEmotion(mood);
+            },
+          ),
     );
   }
 
@@ -442,12 +499,13 @@ class _BottomBar extends ConsumerWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _WishSheet(
-        onSend: (message) async {
-          Navigator.of(context).pop();
-          await ref.read(universeProvider.notifier).sendWish(message);
-        },
-      ),
+      builder:
+          (_) => _WishSheet(
+            onSend: (message) async {
+              Navigator.of(context).pop();
+              await ref.read(universeProvider.notifier).sendWish(message);
+            },
+          ),
     );
   }
 
@@ -456,14 +514,19 @@ class _BottomBar extends ConsumerWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _AddMemorySheet(
-        onSave: (title, description, type) async {
-          Navigator.of(context).pop();
-          await ref
-              .read(universeProvider.notifier)
-              .addMemory(title: title, description: description, type: type);
-        },
-      ),
+      builder:
+          (_) => _AddMemorySheet(
+            onSave: (title, description, type) async {
+              Navigator.of(context).pop();
+              await ref
+                  .read(universeProvider.notifier)
+                  .addMemory(
+                    title: title,
+                    description: description,
+                    type: type,
+                  );
+            },
+          ),
     );
   }
 }
@@ -517,28 +580,36 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
 
   Color _moodColor(String mood) {
     switch (mood) {
-      case 'joy': return AetheraTokens.emotionJoy;
-      case 'love': return AetheraTokens.emotionLove;
-      case 'peace': return AetheraTokens.emotionPeace;
-      case 'longing': return AetheraTokens.emotionLonging;
-      case 'melancholy': return AetheraTokens.emotionMelancholy;
-      case 'anxious': return AetheraTokens.emotionAnxious;
-      default: return AetheraTokens.moonGlow;
+      case 'joy':
+        return AetheraTokens.emotionJoy;
+      case 'love':
+        return AetheraTokens.emotionLove;
+      case 'peace':
+        return AetheraTokens.emotionPeace;
+      case 'longing':
+        return AetheraTokens.emotionLonging;
+      case 'melancholy':
+        return AetheraTokens.emotionMelancholy;
+      case 'anxious':
+        return AetheraTokens.emotionAnxious;
+      default:
+        return AetheraTokens.moonGlow;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: AetheraGlassPanel(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('¿Cómo te sientes?',
-                style: AetheraTokens.displaySmall()),
+            Text('¿Cómo te sientes?', style: AetheraTokens.displaySmall()),
             const SizedBox(height: 6),
             Text(
               'Tu universo reflejará lo que hay en tu corazón.',
@@ -550,62 +621,82 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
               spacing: 12,
               runSpacing: 18,
               alignment: WrapAlignment.center,
-              children: AppConstants.emotions.map((mood) {
-                final isSelected = mood == (widget.currentMood ?? '');
-                final isHovered = mood == _hoveredMood;
-                final color = _moodColor(mood);
-                return GestureDetector(
-                  onTapDown: (_) => setState(() => _hoveredMood = mood),
-                  onTapUp: (_) => setState(() => _hoveredMood = null),
-                  onTapCancel: () => setState(() => _hoveredMood = null),
-                  onTap: () => widget.onSelect(mood),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: isSelected
-                          ? Border.all(color: color.withValues(alpha: 0.8), width: 1.5)
-                          : Border.all(color: Colors.transparent),
-                      color: isSelected || isHovered
-                          ? color.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedScale(
-                          scale: isHovered ? 1.15 : 1.0,
-                          duration: const Duration(milliseconds: 150),
-                          child: EmotionOrb(
-                            mood: mood,
-                            size: isSelected ? 62 : 54,
-                            animated: isSelected,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          AppConstants.emotionLabels[mood] ?? mood,
-                          style: AetheraTokens.labelSmall(
-                            color: isSelected ? color : AetheraTokens.moonGlow,
-                          ),
-                        ),
-                        if (isSelected) ...[
-                          const SizedBox(height: 3),
-                          Container(
-                            width: 16,
-                            height: 2,
+              children:
+                  AppConstants.emotions.map((mood) {
+                    final isSelected = mood == (widget.currentMood ?? '');
+                    final isHovered = mood == _hoveredMood;
+                    final color = _moodColor(mood);
+                    return GestureDetector(
+                      onTapDown: (_) => setState(() => _hoveredMood = mood),
+                      onTapUp: (_) => setState(() => _hoveredMood = null),
+                      onTapCancel: () => setState(() => _hoveredMood = null),
+                      onTap: () => widget.onSelect(mood),
+                      child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: BorderRadius.circular(1),
+                              borderRadius: BorderRadius.circular(16),
+                              border:
+                                  isSelected
+                                      ? Border.all(
+                                        color: color.withValues(alpha: 0.8),
+                                        width: 1.5,
+                                      )
+                                      : Border.all(color: Colors.transparent),
+                              color:
+                                  isSelected || isHovered
+                                      ? color.withValues(alpha: 0.12)
+                                      : Colors.transparent,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AnimatedScale(
+                                  scale: isHovered ? 1.15 : 1.0,
+                                  duration: const Duration(milliseconds: 150),
+                                  child: EmotionOrb(
+                                    mood: mood,
+                                    size: isSelected ? 62 : 54,
+                                    animated: isSelected,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  AppConstants.emotionLabels[mood] ?? mood,
+                                  style: AetheraTokens.labelSmall(
+                                    color:
+                                        isSelected
+                                            ? color
+                                            : AetheraTokens.moonGlow,
+                                  ),
+                                ),
+                                if (isSelected) ...[
+                                  const SizedBox(height: 3),
+                                  Container(
+                                    width: 16,
+                                    height: 2,
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      borderRadius: BorderRadius.circular(1),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          )
+                          .animate(key: ValueKey(mood))
+                          .fadeIn(
+                            duration: 300.ms,
+                            delay: Duration(
+                              milliseconds:
+                                  AppConstants.emotions.indexOf(mood) * 60,
                             ),
                           ),
-                        ],
-                      ],
-                    ),
-                  ).animate(key: ValueKey(mood)).fadeIn(duration: 300.ms, delay: Duration(milliseconds: AppConstants.emotions.indexOf(mood) * 60)),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 8),
           ],
@@ -619,7 +710,7 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
 
 class _AddMemorySheet extends StatefulWidget {
   final Future<void> Function(String title, String description, String type)
-      onSave;
+  onSave;
 
   const _AddMemorySheet({required this.onSave});
 
@@ -652,14 +743,18 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
     if (_titleCtrl.text.trim().isEmpty) return;
     setState(() => _isSaving = true);
     await widget.onSave(
-        _titleCtrl.text.trim(), _descCtrl.text.trim(), _selectedType);
+      _titleCtrl.text.trim(),
+      _descCtrl.text.trim(),
+      _selectedType,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: AetheraGlassPanel(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
@@ -670,12 +765,15 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
             // Header
             Row(
               children: [
-                const Text('✦',
-                    style: TextStyle(
-                        color: AetheraTokens.auroraTeal, fontSize: 18)),
+                const Text(
+                  '✦',
+                  style: TextStyle(
+                    color: AetheraTokens.auroraTeal,
+                    fontSize: 18,
+                  ),
+                ),
                 const SizedBox(width: 10),
-                Text('Nueva memoria',
-                    style: AetheraTokens.displaySmall()),
+                Text('Nueva memoria', style: AetheraTokens.displaySmall()),
               ],
             ),
 
@@ -686,44 +784,56 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
               height: 72,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                children: _types.map((t) {
-                  final (type, emoji, label) = t;
-                  final isSelected = _selectedType == type;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedType = type),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.only(right: 10),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? AetheraTokens.auroraTeal
-                              : AetheraTokens.moonGlow.withValues(alpha: 0.2),
-                          width: isSelected ? 1.5 : 1,
-                        ),
-                        color: isSelected
-                            ? AetheraTokens.auroraTeal.withValues(alpha: 0.1)
-                            : Colors.transparent,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(emoji,
-                              style: const TextStyle(fontSize: 22)),
-                          const SizedBox(height: 4),
-                          Text(label,
-                              style: AetheraTokens.labelSmall(
-                                  color: isSelected
+                children:
+                    _types.map((t) {
+                      final (type, emoji, label) = t;
+                      final isSelected = _selectedType == type;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedType = type),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(right: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color:
+                                  isSelected
                                       ? AetheraTokens.auroraTeal
-                                      : AetheraTokens.moonGlow)),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+                                      : AetheraTokens.moonGlow.withValues(
+                                        alpha: 0.2,
+                                      ),
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                            color:
+                                isSelected
+                                    ? AetheraTokens.auroraTeal.withValues(
+                                      alpha: 0.1,
+                                    )
+                                    : Colors.transparent,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(emoji, style: const TextStyle(fontSize: 22)),
+                              const SizedBox(height: 4),
+                              Text(
+                                label,
+                                style: AetheraTokens.labelSmall(
+                                  color:
+                                      isSelected
+                                          ? AetheraTokens.auroraTeal
+                                          : AetheraTokens.moonGlow,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
               ),
             ),
 
@@ -769,17 +879,18 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
         borderRadius: BorderRadius.circular(12),
         color: Colors.white.withValues(alpha: 0.05),
         border: Border.all(
-            color: AetheraTokens.moonGlow.withValues(alpha: 0.15)),
+          color: AetheraTokens.moonGlow.withValues(alpha: 0.15),
+        ),
       ),
       child: TextField(
         controller: controller,
         maxLines: maxLines,
-        style:
-            AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
+        style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: AetheraTokens.bodyMedium(
-              color: AetheraTokens.moonGlow.withValues(alpha: 0.4)),
+            color: AetheraTokens.moonGlow.withValues(alpha: 0.4),
+          ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -793,8 +904,12 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
 
 class _AddGoalSheet extends StatefulWidget {
   final Future<void> Function(
-      String title, String description, String symbol, DateTime targetDate)
-      onSave;
+    String title,
+    String description,
+    String symbol,
+    DateTime targetDate,
+  )
+  onSave;
 
   const _AddGoalSheet({required this.onSave});
 
@@ -830,17 +945,18 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
       initialDate: _targetDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.dark(
-            primary: AetheraTokens.auroraTeal,
-            onPrimary: AetheraTokens.deepSpace,
-            surface: AetheraTokens.cosmicNight,
-            onSurface: AetheraTokens.starlight,
+      builder:
+          (ctx, child) => Theme(
+            data: Theme.of(ctx).copyWith(
+              colorScheme: const ColorScheme.dark(
+                primary: AetheraTokens.auroraTeal,
+                onPrimary: AetheraTokens.deepSpace,
+                surface: AetheraTokens.cosmicNight,
+                onSurface: AetheraTokens.starlight,
+              ),
+            ),
+            child: child!,
           ),
-        ),
-        child: child!,
-      ),
     );
     if (picked != null) setState(() => _targetDate = picked);
   }
@@ -859,7 +975,9 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: AetheraGlassPanel(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
@@ -870,8 +988,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
             // Header
             Row(
               children: [
-                const Text('🎯',
-                    style: TextStyle(fontSize: 18)),
+                const Text('🎯', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 10),
                 Text('Nueva meta', style: AetheraTokens.displaySmall()),
               ],
@@ -884,44 +1001,56 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
               height: 76,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                children: _symbols.map((s) {
-                  final (symbol, emoji, label) = s;
-                  final isSelected = _selectedSymbol == symbol;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedSymbol = symbol),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.only(right: 10),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? AetheraTokens.goldenDawn
-                              : AetheraTokens.moonGlow.withValues(alpha: 0.2),
-                          width: isSelected ? 1.5 : 1,
-                        ),
-                        color: isSelected
-                            ? AetheraTokens.goldenDawn.withValues(alpha: 0.08)
-                            : Colors.transparent,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(emoji,
-                              style: const TextStyle(fontSize: 22)),
-                          const SizedBox(height: 4),
-                          Text(label,
-                              style: AetheraTokens.labelSmall(
-                                  color: isSelected
+                children:
+                    _symbols.map((s) {
+                      final (symbol, emoji, label) = s;
+                      final isSelected = _selectedSymbol == symbol;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedSymbol = symbol),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(right: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color:
+                                  isSelected
                                       ? AetheraTokens.goldenDawn
-                                      : AetheraTokens.moonGlow)),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+                                      : AetheraTokens.moonGlow.withValues(
+                                        alpha: 0.2,
+                                      ),
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                            color:
+                                isSelected
+                                    ? AetheraTokens.goldenDawn.withValues(
+                                      alpha: 0.08,
+                                    )
+                                    : Colors.transparent,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(emoji, style: const TextStyle(fontSize: 22)),
+                              const SizedBox(height: 4),
+                              Text(
+                                label,
+                                style: AetheraTokens.labelSmall(
+                                  color:
+                                      isSelected
+                                          ? AetheraTokens.goldenDawn
+                                          : AetheraTokens.moonGlow,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
               ),
             ),
 
@@ -949,13 +1078,16 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
             GestureDetector(
               onTap: _pickDate,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   color: Colors.white.withValues(alpha: 0.05),
                   border: Border.all(
-                      color: AetheraTokens.moonGlow.withValues(alpha: 0.15)),
+                    color: AetheraTokens.moonGlow.withValues(alpha: 0.15),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -964,11 +1096,15 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
                     Text(
                       'Fecha objetivo: ${_targetDate.day}/${_targetDate.month}/${_targetDate.year}',
                       style: AetheraTokens.bodyMedium(
-                          color: AetheraTokens.moonGlow),
+                        color: AetheraTokens.moonGlow,
+                      ),
                     ),
                     const Spacer(),
-                    Icon(Icons.chevron_right_rounded,
-                        color: AetheraTokens.dusk, size: 18),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: AetheraTokens.dusk,
+                      size: 18,
+                    ),
                   ],
                 ),
               ),
@@ -998,7 +1134,8 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
         borderRadius: BorderRadius.circular(12),
         color: Colors.white.withValues(alpha: 0.05),
         border: Border.all(
-            color: AetheraTokens.moonGlow.withValues(alpha: 0.15)),
+          color: AetheraTokens.moonGlow.withValues(alpha: 0.15),
+        ),
       ),
       child: TextField(
         controller: controller,
@@ -1007,7 +1144,8 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: AetheraTokens.bodyMedium(
-              color: AetheraTokens.moonGlow.withValues(alpha: 0.4)),
+            color: AetheraTokens.moonGlow.withValues(alpha: 0.4),
+          ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -1023,8 +1161,7 @@ class _GoalDetailSheet extends StatefulWidget {
   final GoalModel goal;
   final Future<void> Function(double progress) onUpdateProgress;
 
-  const _GoalDetailSheet(
-      {required this.goal, required this.onUpdateProgress});
+  const _GoalDetailSheet({required this.goal, required this.onUpdateProgress});
 
   @override
   State<_GoalDetailSheet> createState() => _GoalDetailSheetState();
@@ -1080,8 +1217,9 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
         isCompleted ? AetheraTokens.goldenDawn : AetheraTokens.auroraTeal;
 
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: AetheraGlassPanel(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
@@ -1093,20 +1231,27 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_iconForSymbol(widget.goal.symbol),
-                    style: const TextStyle(fontSize: 36)),
+                Text(
+                  _iconForSymbol(widget.goal.symbol),
+                  style: const TextStyle(fontSize: 36),
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.goal.title,
-                          style: AetheraTokens.displaySmall()),
+                      Text(
+                        widget.goal.title,
+                        style: AetheraTokens.displaySmall(),
+                      ),
                       const SizedBox(height: 4),
                       if (widget.goal.description.isNotEmpty)
-                        Text(widget.goal.description,
-                            style: AetheraTokens.bodyMedium(
-                                color: AetheraTokens.moonGlow)),
+                        Text(
+                          widget.goal.description,
+                          style: AetheraTokens.bodyMedium(
+                            color: AetheraTokens.moonGlow,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -1120,12 +1265,12 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
               children: [
                 _StatChip(
                   icon: '📅',
-                  label: isCompleted
-                      ? 'Completada'
-                      : '$_daysLeft días restantes',
-                  color: isCompleted
-                      ? AetheraTokens.goldenDawn
-                      : AetheraTokens.moonGlow,
+                  label:
+                      isCompleted ? 'Completada' : '$_daysLeft días restantes',
+                  color:
+                      isCompleted
+                          ? AetheraTokens.goldenDawn
+                          : AetheraTokens.moonGlow,
                 ),
                 const SizedBox(width: 10),
                 _StatChip(
@@ -1142,11 +1287,16 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Progreso',
-                    style: AetheraTokens.labelLarge(
-                        color: AetheraTokens.moonGlow)),
-                Text('$progressPercent%',
-                    style: AetheraTokens.labelLarge(color: accentColor)),
+                Text(
+                  'Progreso',
+                  style: AetheraTokens.labelLarge(
+                    color: AetheraTokens.moonGlow,
+                  ),
+                ),
+                Text(
+                  '$progressPercent%',
+                  style: AetheraTokens.labelLarge(color: accentColor),
+                ),
               ],
             ),
 
@@ -1158,8 +1308,7 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
               child: LinearProgressIndicator(
                 value: _progress,
                 minHeight: 6,
-                backgroundColor:
-                    AetheraTokens.moonGlow.withValues(alpha: 0.12),
+                backgroundColor: AetheraTokens.moonGlow.withValues(alpha: 0.12),
                 valueColor: AlwaysStoppedAnimation<Color>(accentColor),
               ),
             ),
@@ -1171,13 +1320,15 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
               SliderTheme(
                 data: SliderThemeData(
                   activeTrackColor: accentColor,
-                  inactiveTrackColor:
-                      AetheraTokens.moonGlow.withValues(alpha: 0.1),
+                  inactiveTrackColor: AetheraTokens.moonGlow.withValues(
+                    alpha: 0.1,
+                  ),
                   thumbColor: accentColor,
                   overlayColor: accentColor.withValues(alpha: 0.15),
                   trackHeight: 2,
-                  thumbShape:
-                      const RoundSliderThumbShape(enabledThumbRadius: 8),
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 8,
+                  ),
                 ),
                 child: Slider(
                   value: _progress,
@@ -1190,15 +1341,20 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 14),
+                  horizontal: 20,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(colors: [
-                    AetheraTokens.goldenDawn.withValues(alpha: 0.12),
-                    AetheraTokens.nebulaPurple.withValues(alpha: 0.12),
-                  ]),
+                  gradient: LinearGradient(
+                    colors: [
+                      AetheraTokens.goldenDawn.withValues(alpha: 0.12),
+                      AetheraTokens.nebulaPurple.withValues(alpha: 0.12),
+                    ],
+                  ),
                   border: Border.all(
-                      color: AetheraTokens.goldenDawn.withValues(alpha: 0.4)),
+                    color: AetheraTokens.goldenDawn.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1208,7 +1364,8 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
                     Text(
                       '¡Meta cumplida! +20 conexión',
                       style: AetheraTokens.labelLarge(
-                          color: AetheraTokens.goldenDawn),
+                        color: AetheraTokens.goldenDawn,
+                      ),
                     ),
                   ],
                 ),
@@ -1218,9 +1375,10 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
             if (!widget.goal.isCompleted) ...[
               const SizedBox(height: 24),
               AetheraButton(
-                label: _progress >= 1.0
-                    ? '¡Completar meta! 🏆'
-                    : 'Guardar progreso',
+                label:
+                    _progress >= 1.0
+                        ? '¡Completar meta! 🏆'
+                        : 'Guardar progreso',
                 isLoading: _isSaving,
                 onPressed: _save,
               ),
@@ -1237,8 +1395,11 @@ class _StatChip extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _StatChip(
-      {required this.icon, required this.label, required this.color});
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1254,8 +1415,7 @@ class _StatChip extends StatelessWidget {
         children: [
           Text(icon, style: const TextStyle(fontSize: 12)),
           const SizedBox(width: 6),
-          Text(label,
-              style: AetheraTokens.labelSmall(color: color)),
+          Text(label, style: AetheraTokens.labelSmall(color: color)),
         ],
       ),
     );
@@ -1273,13 +1433,17 @@ class _NewMemoryToast extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AetheraTokens.radiusFull),
           color: AetheraTokens.auroraTeal.withValues(alpha: 0.12),
-          border:
-              Border.all(color: AetheraTokens.auroraTeal.withValues(alpha: 0.4)),
+          border: Border.all(
+            color: AetheraTokens.auroraTeal.withValues(alpha: 0.4),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('✦', style: TextStyle(color: AetheraTokens.auroraTeal, fontSize: 12)),
+            const Text(
+              '✦',
+              style: TextStyle(color: AetheraTokens.auroraTeal, fontSize: 12),
+            ),
             const SizedBox(width: 8),
             Text(
               'Nueva memoria añadida al universo',
@@ -1318,13 +1482,15 @@ class _MusicToggleButtonState extends State<_MusicToggleButton> {
         height: 28,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: _isMuted
-              ? Colors.white.withValues(alpha: 0.03)
-              : AetheraTokens.auroraTeal.withValues(alpha: 0.08),
+          color:
+              _isMuted
+                  ? Colors.white.withValues(alpha: 0.03)
+                  : AetheraTokens.auroraTeal.withValues(alpha: 0.08),
           border: Border.all(
-            color: _isMuted
-                ? Colors.white.withValues(alpha: 0.08)
-                : AetheraTokens.auroraTeal.withValues(alpha: 0.3),
+            color:
+                _isMuted
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : AetheraTokens.auroraTeal.withValues(alpha: 0.3),
           ),
         ),
         child: Icon(
@@ -1431,10 +1597,14 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
     _expand = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _fade = Tween(begin: 0.18, end: 0.0)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
+    _fade = Tween(
+      begin: 0.18,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
     _ctrl.forward();
   }
 
@@ -1446,25 +1616,39 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
 
   Color _emotionColor(String mood) {
     switch (mood) {
-      case 'joy': return AetheraTokens.emotionJoy;
-      case 'love': return AetheraTokens.emotionLove;
-      case 'peace': return AetheraTokens.emotionPeace;
-      case 'longing': return AetheraTokens.emotionLonging;
-      case 'melancholy': return AetheraTokens.emotionMelancholy;
-      case 'anxious': return AetheraTokens.emotionAnxious;
-      default: return AetheraTokens.auroraTeal;
+      case 'joy':
+        return AetheraTokens.emotionJoy;
+      case 'love':
+        return AetheraTokens.emotionLove;
+      case 'peace':
+        return AetheraTokens.emotionPeace;
+      case 'longing':
+        return AetheraTokens.emotionLonging;
+      case 'melancholy':
+        return AetheraTokens.emotionMelancholy;
+      case 'anxious':
+        return AetheraTokens.emotionAnxious;
+      default:
+        return AetheraTokens.auroraTeal;
     }
   }
 
   String _emotionLabel(String mood) {
     switch (mood) {
-      case 'joy': return 'Alegría ✨';
-      case 'love': return 'Amor 💕';
-      case 'peace': return 'Paz 🌿';
-      case 'longing': return 'Anhelo 🌙';
-      case 'melancholy': return 'Melancolía 🌌';
-      case 'anxious': return 'Angustia 🌊';
-      default: return 'Neutral ✦';
+      case 'joy':
+        return 'Alegría ✨';
+      case 'love':
+        return 'Amor 💕';
+      case 'peace':
+        return 'Paz 🌿';
+      case 'longing':
+        return 'Anhelo 🌙';
+      case 'melancholy':
+        return 'Melancolía 🌌';
+      case 'anxious':
+        return 'Angustia 🌊';
+      default:
+        return 'Neutral ✦';
     }
   }
 
@@ -1474,61 +1658,71 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
     return IgnorePointer(
       child: AnimatedBuilder(
         animation: _ctrl,
-        builder: (_, __) => Stack(
-          fit: StackFit.expand,
-          children: [
-            // Ripple circle
-            Center(
-              child: Container(
-                width: MediaQuery.of(context).size.width * 2.5 * _expand.value,
-                height: MediaQuery.of(context).size.width * 2.5 * _expand.value,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withValues(alpha: _fade.value),
-                ),
-              ),
-            ),
-            // Center toast
-            if (_ctrl.value < 0.7)
-              Center(
-                child: Opacity(
-                  opacity: (1.0 - _ctrl.value / 0.7).clamp(0.0, 1.0),
+        builder:
+            (_, __) => Stack(
+              fit: StackFit.expand,
+              children: [
+                // Ripple circle
+                Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    width:
+                        MediaQuery.of(context).size.width * 2.5 * _expand.value,
+                    height:
+                        MediaQuery.of(context).size.width * 2.5 * _expand.value,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
-                      color: color.withValues(alpha: 0.15),
-                      border: Border.all(color: color.withValues(alpha: 0.5)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.3),
-                          blurRadius: 30,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _emotionLabel(widget.mood),
-                          style: AetheraTokens.displaySmall().copyWith(
-                            color: color,
-                            fontSize: 22,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '+${AppConstants.pointsDailyCheckin} conexión',
-                          style: AetheraTokens.bodySmall(color: color.withValues(alpha: 0.8)),
-                        ),
-                      ],
+                      shape: BoxShape.circle,
+                      color: color.withValues(alpha: _fade.value),
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
+                // Center toast
+                if (_ctrl.value < 0.7)
+                  Center(
+                    child: Opacity(
+                      opacity: (1.0 - _ctrl.value / 0.7).clamp(0.0, 1.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          color: color.withValues(alpha: 0.15),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.5),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.3),
+                              blurRadius: 30,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _emotionLabel(widget.mood),
+                              style: AetheraTokens.displaySmall().copyWith(
+                                color: color,
+                                fontSize: 22,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '+${AppConstants.pointsDailyCheckin} conexión',
+                              style: AetheraTokens.bodySmall(
+                                color: color.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
       ),
     );
   }
@@ -1555,9 +1749,7 @@ class _MemoryDetailSheet extends StatelessWidget {
             children: [
               const Text('✦', style: TextStyle(fontSize: 20)),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(title, style: AetheraTokens.displaySmall()),
-              ),
+              Expanded(child: Text(title, style: AetheraTokens.displaySmall())),
             ],
           ),
           const SizedBox(height: 12),
@@ -1633,7 +1825,9 @@ class _WishSheetState extends State<_WishSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: AetheraGlassPanel(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
@@ -1642,13 +1836,24 @@ class _WishSheetState extends State<_WishSheet> {
           children: [
             // Sparkle header
             ShaderMask(
-              shaderCallback: (b) => const LinearGradient(
-                colors: [AetheraTokens.auroraTeal, AetheraTokens.nebulaPurple, AetheraTokens.roseQuartz],
-              ).createShader(b),
-              child: const Text('✨', style: TextStyle(fontSize: 36, color: Colors.white)),
+              shaderCallback:
+                  (b) => const LinearGradient(
+                    colors: [
+                      AetheraTokens.auroraTeal,
+                      AetheraTokens.nebulaPurple,
+                      AetheraTokens.roseQuartz,
+                    ],
+                  ).createShader(b),
+              child: const Text(
+                '✨',
+                style: TextStyle(fontSize: 36, color: Colors.white),
+              ),
             ),
             const SizedBox(height: 12),
-            Text('Lanza un deseo al universo', style: AetheraTokens.displaySmall()),
+            Text(
+              'Lanza un deseo al universo',
+              style: AetheraTokens.displaySmall(),
+            ),
             const SizedBox(height: 6),
             Text(
               'Vuela como una estrella fugaz hasta tu persona.',
@@ -1679,7 +1884,9 @@ class _WishSheetState extends State<_WishSheet> {
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
-                  counterStyle: AetheraTokens.bodySmall(color: AetheraTokens.dusk),
+                  counterStyle: AetheraTokens.bodySmall(
+                    color: AetheraTokens.dusk,
+                  ),
                 ),
               ),
             ),
@@ -1734,7 +1941,10 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 60),
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 30),
     ]).animate(_starCtrl);
-    _revealScale = CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOutBack);
+    _revealScale = CurvedAnimation(
+      parent: _revealCtrl,
+      curve: Curves.easeOutBack,
+    );
     _revealFade = CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOut);
 
     _starCtrl.forward().then((_) {
@@ -1761,9 +1971,7 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
         // Dark scrim
         GestureDetector(
           onTap: _showMessage ? widget.onSeen : null,
-          child: Container(
-            color: Colors.black.withValues(alpha: 0.55),
-          ),
+          child: Container(color: Colors.black.withValues(alpha: 0.55)),
         ),
 
         // Shooting star animation
@@ -1809,15 +2017,24 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         ShaderMask(
-                          shaderCallback: (b) => const LinearGradient(
-                            colors: [AetheraTokens.auroraTeal, AetheraTokens.roseQuartz],
-                          ).createShader(b),
-                          child: const Text('✨', style: TextStyle(fontSize: 40, color: Colors.white)),
+                          shaderCallback:
+                              (b) => const LinearGradient(
+                                colors: [
+                                  AetheraTokens.auroraTeal,
+                                  AetheraTokens.roseQuartz,
+                                ],
+                              ).createShader(b),
+                          child: const Text(
+                            '✨',
+                            style: TextStyle(fontSize: 40, color: Colors.white),
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'Un deseo llegó a tu universo',
-                          style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+                          style: AetheraTokens.bodySmall(
+                            color: AetheraTokens.moonGlow,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
@@ -1825,15 +2042,23 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            color: AetheraTokens.auroraTeal.withValues(alpha: 0.06),
+                            color: AetheraTokens.auroraTeal.withValues(
+                              alpha: 0.06,
+                            ),
                             border: Border.all(
-                              color: AetheraTokens.auroraTeal.withValues(alpha: 0.2),
+                              color: AetheraTokens.auroraTeal.withValues(
+                                alpha: 0.2,
+                              ),
                             ),
                           ),
                           child: Text(
                             widget.wish.message as String,
-                            style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight)
-                                .copyWith(fontStyle: FontStyle.italic, height: 1.6),
+                            style: AetheraTokens.bodyLarge(
+                              color: AetheraTokens.starlight,
+                            ).copyWith(
+                              fontStyle: FontStyle.italic,
+                              height: 1.6,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -1841,14 +2066,21 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
                         GestureDetector(
                           onTap: widget.onSeen,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 28,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(AetheraTokens.radiusFull),
+                              borderRadius: BorderRadius.circular(
+                                AetheraTokens.radiusFull,
+                              ),
                               gradient: AetheraTokens.auroraGradient,
                             ),
                             child: Text(
                               'Recibido  💕',
-                              style: AetheraTokens.labelLarge(color: AetheraTokens.deepSpace),
+                              style: AetheraTokens.labelLarge(
+                                color: AetheraTokens.deepSpace,
+                              ),
                             ),
                           ),
                         ),
@@ -1864,7 +2096,6 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
   }
 }
 
-
 class _WishStarPainter extends CustomPainter {
   final Offset head;
   final Offset tail;
@@ -1879,30 +2110,34 @@ class _WishStarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (alpha <= 0.01) return;
-    final linePaint = Paint()
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..shader = LinearGradient(
-        colors: [
-          const Color(0x00E8F4FD),
-          Color.fromRGBO(100, 255, 218, alpha),
-        ],
-      ).createShader(Rect.fromPoints(tail, head));
+    final linePaint =
+        Paint()
+          ..strokeWidth = 2.5
+          ..style = PaintingStyle.stroke
+          ..shader = LinearGradient(
+            colors: [
+              const Color(0x00E8F4FD),
+              Color.fromRGBO(100, 255, 218, alpha),
+            ],
+          ).createShader(Rect.fromPoints(tail, head));
     canvas.drawLine(tail, head, linePaint);
 
     // Bright head
     canvas.drawCircle(
-      head, 3,
+      head,
+      3,
       Paint()..color = Color.fromRGBO(232, 244, 253, alpha),
     );
     // Teal glow
     canvas.drawCircle(
-      head, 10,
+      head,
+      10,
       Paint()..color = Color.fromRGBO(100, 255, 218, alpha * 0.4),
     );
     // Rose outer glow
     canvas.drawCircle(
-      head, 20,
+      head,
+      20,
       Paint()..color = Color.fromRGBO(255, 107, 138, alpha * 0.2),
     );
   }
@@ -1958,21 +2193,221 @@ class _SoloBanner extends StatelessWidget {
                   Text(
                     'Invita a tu pareja',
                     style: AetheraTokens.labelLarge(
-                        color: AetheraTokens.starlight),
+                      color: AetheraTokens.starlight,
+                    ),
                   ),
                   Text(
                     'Código: $inviteCode  •  Toca para conectar',
                     style: AetheraTokens.bodySmall(
-                        color: AetheraTokens.auroraTeal),
+                      color: AetheraTokens.auroraTeal,
+                    ),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios_rounded,
-                size: 14, color: AetheraTokens.moonGlow),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: AetheraTokens.moonGlow,
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+class _CosmicEventCutsceneOverlay extends StatefulWidget {
+  final String eventName;
+  final VoidCallback onSkip;
+
+  const _CosmicEventCutsceneOverlay({
+    required this.eventName,
+    required this.onSkip,
+  });
+
+  @override
+  State<_CosmicEventCutsceneOverlay> createState() =>
+      _CosmicEventCutsceneOverlayState();
+}
+
+class _CosmicEventCutsceneOverlayState
+    extends State<_CosmicEventCutsceneOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4300),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final p = _ctrl.value;
+        final fadeIn = Curves.easeOut.transform((p / 0.18).clamp(0.0, 1.0));
+        final fadeOut =
+            1.0 - Curves.easeIn.transform(((p - 0.82) / 0.18).clamp(0.0, 1.0));
+        final opacity = (fadeIn * fadeOut).clamp(0.0, 1.0);
+        final titleRise = 12 * (1 - Curves.easeOutCubic.transform(p));
+
+        return Opacity(
+          opacity: opacity,
+          child: Material(
+            color: Colors.black.withValues(alpha: 0.45),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CustomPaint(painter: _CosmicEventBurstPainter(progress: p)),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(0, -0.1),
+                        radius: 0.95 + p * 0.2,
+                        colors: [
+                          AetheraTokens.auroraTeal.withValues(alpha: 0.16),
+                          AetheraTokens.nebulaPurple.withValues(alpha: 0.2),
+                          Colors.black.withValues(alpha: 0.78),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 16,
+                  top: 44,
+                  child: TextButton(
+                    onPressed: widget.onSkip,
+                    child: Text(
+                      'Saltar',
+                      style: AetheraTokens.bodySmall(
+                        color: AetheraTokens.moonGlow,
+                      ),
+                    ),
+                  ),
+                ),
+                Center(
+                  child: Transform.translate(
+                    offset: Offset(0, titleRise),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'EVENTO CÓSMICO DESBLOQUEADO',
+                          style: AetheraTokens.labelLarge(
+                            color: AetheraTokens.auroraTeal,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ShaderMask(
+                          shaderCallback:
+                              (bounds) => LinearGradient(
+                                colors: [
+                                  AetheraTokens.goldenDawn,
+                                  AetheraTokens.auroraTeal,
+                                  AetheraTokens.nebulaPurple,
+                                ],
+                              ).createShader(bounds),
+                          child: Text(
+                            widget.eventName,
+                            style: GoogleFonts.cormorantGaramond(
+                              fontSize: 46,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 0.8,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          '+${AppConstants.pointsSyncRitual} conexión • Reliquia forjada',
+                          style: AetheraTokens.bodyMedium(
+                            color: AetheraTokens.starlight,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CosmicEventBurstPainter extends CustomPainter {
+  final double progress;
+
+  const _CosmicEventBurstPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height * 0.45);
+    final maxRadius = size.shortestSide * 0.75;
+    final ringAlpha = (1.0 - progress).clamp(0.0, 1.0);
+
+    for (int i = 0; i < 3; i++) {
+      final t = ((progress - i * 0.12) / 0.72).clamp(0.0, 1.0);
+      if (t <= 0) continue;
+      final radius = maxRadius * t;
+      final stroke = (3.8 - i).clamp(1.4, 4.0);
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..color = (i % 2 == 0
+                  ? AetheraTokens.auroraTeal
+                  : AetheraTokens.roseQuartz)
+              .withValues(alpha: 0.22 * ringAlpha),
+      );
+    }
+
+    final sparks = 90;
+    final rng = math.Random(33);
+    for (int i = 0; i < sparks; i++) {
+      final baseA = (i / sparks) * math.pi * 2;
+      final jitter = (rng.nextDouble() - 0.5) * 0.18;
+      final angle = baseA + jitter;
+      final speed = 0.22 + rng.nextDouble() * 0.78;
+      final radius = maxRadius * speed * progress;
+      final x = center.dx + math.cos(angle) * radius;
+      final y = center.dy + math.sin(angle) * radius;
+      final alpha = (1 - progress) * (0.35 + rng.nextDouble() * 0.45);
+      final color = switch (i % 3) {
+        0 => AetheraTokens.auroraTeal,
+        1 => AetheraTokens.goldenDawn,
+        _ => AetheraTokens.nebulaPurple,
+      };
+      canvas.drawCircle(
+        Offset(x, y),
+        1.2 + rng.nextDouble() * 2.2,
+        Paint()..color = color.withValues(alpha: alpha),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CosmicEventBurstPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
