@@ -1,7 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart'
-    show AsyncValue, Provider;
-import 'package:flutter_riverpod/legacy.dart'
-    show StateNotifier, StateNotifierProvider;
+    show
+        AsyncData,
+        AsyncLoading,
+        AsyncNotifier,
+        AsyncNotifierProvider,
+        AsyncValue,
+        Provider;
 import 'package:aethera/core/services/auth_service.dart';
 import 'package:aethera/core/services/user_service.dart';
 import 'package:aethera/shared/models/user_model.dart';
@@ -9,15 +13,15 @@ import 'package:aethera/shared/models/user_model.dart';
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 final userServiceProvider = Provider<UserService>((ref) => UserService());
 
-class AuthNotifier extends StateNotifier<AsyncValue<void>> {
-  AuthNotifier(this._authService, this._userService)
-      : super(const AsyncValue.data(null));
+class AuthNotifier extends AsyncNotifier<void> {
+  AuthService get _authService => ref.read(authServiceProvider);
+  UserService get _userService => ref.read(userServiceProvider);
 
-  final AuthService _authService;
-  final UserService _userService;
+  @override
+  void build() {}
 
   Future<void> signIn(String email, String password) async {
-    state = const AsyncValue.loading();
+    state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await _authService.signIn(email, password);
     });
@@ -25,7 +29,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
 
   Future<void> register(
       String email, String password, String displayName) async {
-    state = const AsyncValue.loading();
+    state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final cred = await _authService.register(email, password);
       await _userService.createUser(UserModel(
@@ -38,16 +42,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   }
 
   Future<void> signOut() async {
-    state = const AsyncValue.loading();
+    state = const AsyncLoading();
     await _authService.signOut();
-    state = const AsyncValue.data(null);
+    state = const AsyncData(null);
   }
 
-  void resetError() => state = const AsyncValue.data(null);
+  void resetError() => state = const AsyncData(null);
 }
 
-final authProvider =
-    StateNotifierProvider<AuthNotifier, AsyncValue<void>>((ref) => AuthNotifier(
-          ref.watch(authServiceProvider),
-          ref.watch(userServiceProvider),
-        ));
+final authProvider = AsyncNotifierProvider<AuthNotifier, void>(AuthNotifier.new);
