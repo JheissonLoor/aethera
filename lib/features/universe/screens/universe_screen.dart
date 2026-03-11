@@ -146,7 +146,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               ).animate().fadeIn(duration: 400.ms),
             ),
 
-          // â”€â”€ Cosmic event cutscene overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // Cosmic event cutscene overlay
           if (state.cosmicEventName != null)
             Positioned.fill(
               child: _CosmicEventCutsceneOverlay(
