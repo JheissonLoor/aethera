@@ -1,0 +1,15 @@
+{
+  "@@locale": "en",
+  "appTitle": "Aethera",
+  "@appTitle": {
+    "description": "Application title"
+  },
+  "startupErrorTitle": "Aethera could not start",
+  "@startupErrorTitle": {
+    "description": "Title shown when startup fails"
+  },
+  "startupErrorMessage": "Check your Firebase configuration and try again.",
+  "@startupErrorMessage": {
+    "description": "Description shown when startup fails"
+  }
+}

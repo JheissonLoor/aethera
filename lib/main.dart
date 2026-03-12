@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:aethera/core/router/app_router.dart';
 import 'package:aethera/core/services/music_service.dart';
 import 'package:aethera/core/services/notification_service.dart';
@@ -46,7 +48,15 @@ class AetheraApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'Aethera',
+      onGenerateTitle:
+          (context) => AppLocalizations.of(context)?.appTitle ?? 'Aethera',
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       debugShowCheckedModeBanner: false,
       theme: AetheraTokens.theme,
       routerConfig: appRouter,
@@ -99,32 +109,50 @@ class _BootstrapErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      onGenerateTitle:
+          (context) => AppLocalizations.of(context)?.appTitle ?? 'Aethera',
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: AetheraTokens.deepSpace,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.white70),
-                const SizedBox(height: 12),
-                Text(
-                  'No se pudo iniciar Aethera',
-                  textAlign: TextAlign.center,
-                  style: AetheraTokens.displaySmall(color: Colors.white),
+      home: Builder(
+        builder: (context) {
+          final l10n = AppLocalizations.of(context);
+          return Scaffold(
+            backgroundColor: AetheraTokens.deepSpace,
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: Colors.white70,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n?.startupErrorTitle ?? 'No se pudo iniciar Aethera',
+                      textAlign: TextAlign.center,
+                      style: AetheraTokens.displaySmall(color: Colors.white),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n?.startupErrorMessage ??
+                          'Verifica la configuracion de Firebase e intentalo de nuevo.',
+                      textAlign: TextAlign.center,
+                      style: AetheraTokens.bodySmall(color: Colors.white70),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Verifica la configuracion de Firebase e intentalo de nuevo.',
-                  textAlign: TextAlign.center,
-                  style: AetheraTokens.bodySmall(color: Colors.white70),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
