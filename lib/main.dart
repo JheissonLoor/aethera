@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:aethera/l10n/gen/app_localizations.dart';
 import 'package:aethera/core/router/app_router.dart';
+import 'package:aethera/core/services/crashlytics_service.dart';
 import 'package:aethera/core/services/music_service.dart';
 import 'package:aethera/core/services/notification_service.dart';
 import 'package:aethera/core/theme/aethera_tokens.dart';
@@ -20,6 +21,12 @@ Future<void> main() async {
   if (!firebaseOk) {
     runApp(const _BootstrapErrorApp());
     return;
+  }
+
+  try {
+    await CrashlyticsService.instance.initialize();
+  } catch (_) {
+    // Non-fatal: app keeps running if Crashlytics wiring fails.
   }
 
   await SystemChrome.setPreferredOrientations([
@@ -92,13 +99,27 @@ Future<bool> _initializeFirebase() async {
 Future<void> _initializeOptionalServices() async {
   try {
     await NotificationService.instance.initialize();
-  } catch (_) {
+  } catch (error, stackTrace) {
+    unawaited(
+      CrashlyticsService.instance.recordNonFatal(
+        error,
+        stackTrace,
+        reason: 'notification_init_failed',
+      ),
+    );
     // Non-fatal: app keeps running without notifications.
   }
 
   try {
     await MusicService.instance.initialize();
-  } catch (_) {
+  } catch (error, stackTrace) {
+    unawaited(
+      CrashlyticsService.instance.recordNonFatal(
+        error,
+        stackTrace,
+        reason: 'music_init_failed',
+      ),
+    );
     // Non-fatal: app keeps running without music.
   }
 }

@@ -43,6 +43,7 @@ dependencies:
 
   # Audio
   audioplayers: ^6.0.0
+  firebase_crashlytics: ^5.0.8
 
 dev_dependencies:
   flutter_test:
