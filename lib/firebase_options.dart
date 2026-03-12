@@ -41,46 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_WEB_API_KEY',
-    appId: 'REPLACE_WITH_WEB_APP_ID',
-    messagingSenderId: 'REPLACE_WITH_MESSAGING_SENDER_ID',
-    projectId: 'REPLACE_WITH_PROJECT_ID',
-    authDomain: 'REPLACE_WITH_AUTH_DOMAIN',
-    storageBucket: 'REPLACE_WITH_STORAGE_BUCKET',
+    apiKey: 'AIzaSyAhHXFet4W50R_VtmZo8wzP6_-faAV7RSU',
+    appId: '1:1076398017483:web:5fae0dc2143ccb5eb6c44e',
+    messagingSenderId: '1076398017483',
+    projectId: 'aethera-2a620',
+    authDomain: 'aethera-2a620.firebaseapp.com',
+    storageBucket: 'aethera-2a620.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_ANDROID_API_KEY',
-    appId: 'REPLACE_WITH_ANDROID_APP_ID',
-    messagingSenderId: 'REPLACE_WITH_MESSAGING_SENDER_ID',
-    projectId: 'REPLACE_WITH_PROJECT_ID',
-    storageBucket: 'REPLACE_WITH_STORAGE_BUCKET',
+    apiKey: 'AIzaSyAhHXFet4W50R_VtmZo8wzP6_-faAV7RSU',
+    appId: '1:1076398017483:android:9c2d344e62f6e6c0b6c44e',
+    messagingSenderId: '1076398017483',
+    projectId: 'aethera-2a620',
+    storageBucket: 'aethera-2a620.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_IOS_API_KEY',
-    appId: 'REPLACE_WITH_IOS_APP_ID',
-    messagingSenderId: 'REPLACE_WITH_MESSAGING_SENDER_ID',
-    projectId: 'REPLACE_WITH_PROJECT_ID',
-    storageBucket: 'REPLACE_WITH_STORAGE_BUCKET',
-    iosBundleId: 'REPLACE_WITH_IOS_BUNDLE_ID',
+    apiKey: 'AIzaSyAhHXFet4W50R_VtmZo8wzP6_-faAV7RSU',
+    appId: '1:1076398017483:ios:f5258df425d99280b6c44e',
+    messagingSenderId: '1076398017483',
+    projectId: 'aethera-2a620',
+    storageBucket: 'aethera-2a620.firebasestorage.app',
+    iosBundleId: 'com.aethera.aethera',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_MACOS_API_KEY',
-    appId: 'REPLACE_WITH_MACOS_APP_ID',
-    messagingSenderId: 'REPLACE_WITH_MESSAGING_SENDER_ID',
-    projectId: 'REPLACE_WITH_PROJECT_ID',
-    storageBucket: 'REPLACE_WITH_STORAGE_BUCKET',
-    iosBundleId: 'REPLACE_WITH_MACOS_BUNDLE_ID',
+    apiKey: 'AIzaSyAhHXFet4W50R_VtmZo8wzP6_-faAV7RSU',
+    appId: '1:1076398017483:ios:f5258df425d99280b6c44e',
+    messagingSenderId: '1076398017483',
+    projectId: 'aethera-2a620',
+    storageBucket: 'aethera-2a620.firebasestorage.app',
+    iosBundleId: 'com.aethera.aethera',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_WINDOWS_API_KEY',
-    appId: 'REPLACE_WITH_WINDOWS_APP_ID',
-    messagingSenderId: 'REPLACE_WITH_MESSAGING_SENDER_ID',
-    projectId: 'REPLACE_WITH_PROJECT_ID',
-    authDomain: 'REPLACE_WITH_AUTH_DOMAIN',
-    storageBucket: 'REPLACE_WITH_STORAGE_BUCKET',
+    apiKey: 'AIzaSyAhHXFet4W50R_VtmZo8wzP6_-faAV7RSU',
+    appId: '1:1076398017483:web:760b4fab020984d6b6c44e',
+    messagingSenderId: '1076398017483',
+    projectId: 'aethera-2a620',
+    authDomain: 'aethera-2a620.firebaseapp.com',
+    storageBucket: 'aethera-2a620.firebasestorage.app',
   );
 }
