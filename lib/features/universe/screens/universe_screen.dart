@@ -127,22 +127,38 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
             isActive: state.partnerOnline || state.receivedPulse,
           ),
 
-          if (state.capsules.isNotEmpty)
+          if (state.dailyQuestion != null || state.capsules.isNotEmpty)
             Positioned(
               top: 108,
               left: 20,
               right: 20,
-              child: _TimeCapsuleStatusPanel(
-                capsules: state.capsules,
-                currentUserId: state.currentUserId,
-                onOpenCapsule: _openCapsule,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (state.dailyQuestion != null)
+                    _DailyQuestionPanel(
+                      state: state,
+                      onAnswer: () => _showDailyQuestionAnswerSheet(state),
+                    ),
+                  if (state.dailyQuestion != null && state.capsules.isNotEmpty)
+                    const SizedBox(height: 8),
+                  if (state.capsules.isNotEmpty)
+                    _TimeCapsuleStatusPanel(
+                      capsules: state.capsules,
+                      currentUserId: state.currentUserId,
+                      onOpenCapsule: _openCapsule,
+                    ),
+                ],
               ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.15, end: 0),
             ),
 
           // â”€â”€ Layer 7.5: New memory notification toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           if (state.newMemoryFromPartner)
             Positioned(
-              top: 160,
+              top:
+                  (state.dailyQuestion != null || state.capsules.isNotEmpty)
+                      ? 266
+                      : 160,
               left: 24,
               right: 24,
               child: _NewMemoryToast()
@@ -264,6 +280,33 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               await ref
                   .read(universeProvider.notifier)
                   .updateGoalProgress(goal.id, progress);
+            },
+          ),
+    );
+  }
+
+  void _showDailyQuestionAnswerSheet(UniverseAppState state) {
+    final dailyQuestion = state.dailyQuestion;
+    if (dailyQuestion == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder:
+          (_) => _DailyQuestionAnswerSheet(
+            question: dailyQuestion.question,
+            initialAnswer: state.myDailyQuestionAnswer,
+            onSubmit: (answer) async {
+              Navigator.of(context).pop();
+              await ref
+                  .read(universeProvider.notifier)
+                  .submitDailyQuestionAnswer(answer);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Respuesta guardada.')),
+                );
+              }
             },
           ),
     );
@@ -654,6 +697,244 @@ class _ActionButton extends StatelessWidget {
             Text(icon, style: const TextStyle(fontSize: 22)),
             const SizedBox(height: 4),
             Text(label, style: AetheraTokens.labelSmall()),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DailyQuestionPanel extends StatelessWidget {
+  final UniverseAppState state;
+  final VoidCallback onAnswer;
+
+  const _DailyQuestionPanel({required this.state, required this.onAnswer});
+
+  @override
+  Widget build(BuildContext context) {
+    final dailyQuestion = state.dailyQuestion;
+    if (dailyQuestion == null) return const SizedBox.shrink();
+
+    final answered = state.hasAnsweredDailyQuestion;
+    final revealed = state.isDailyQuestionRevealed;
+
+    return AetheraGlassPanel(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('💬', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Text(
+                'Pregunta del dia',
+                style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
+              ),
+              const Spacer(),
+              Text(
+                dailyQuestion.dayKey,
+                style: AetheraTokens.labelSmall(color: AetheraTokens.moonGlow),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            dailyQuestion.question,
+            style: AetheraTokens.bodyMedium(color: AetheraTokens.starlight),
+          ),
+          const SizedBox(height: 10),
+          if (!answered)
+            AetheraButton(
+              label: 'Responder ahora',
+              width: double.infinity,
+              onPressed: onAnswer,
+            ),
+          if (answered && !revealed) ...[
+            Row(
+              children: [
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.8,
+                    color: AetheraTokens.auroraTeal,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Respuesta enviada. Esperando a tu pareja para revelar.',
+                    style: AetheraTokens.bodySmall(
+                      color: AetheraTokens.moonGlow,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            AetheraButton(
+              label: 'Editar respuesta',
+              variant: AetheraButtonVariant.ghost,
+              width: double.infinity,
+              onPressed: onAnswer,
+            ),
+          ],
+          if (revealed) ...[
+            _AnswerTile(
+              label: 'Tu respuesta',
+              answer:
+                  state.myDailyQuestionAnswer?.trim().isNotEmpty == true
+                      ? state.myDailyQuestionAnswer!
+                      : 'Sin respuesta',
+            ),
+            const SizedBox(height: 8),
+            _AnswerTile(
+              label: 'Respuesta de tu pareja',
+              answer:
+                  state.partnerDailyQuestionAnswer?.trim().isNotEmpty == true
+                      ? state.partnerDailyQuestionAnswer!
+                      : 'Aun no disponible',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AnswerTile extends StatelessWidget {
+  final String label;
+  final String answer;
+
+  const _AnswerTile({required this.label, required this.answer});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.04),
+        border: Border.all(
+          color: AetheraTokens.moonGlow.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AetheraTokens.labelSmall(color: AetheraTokens.auroraTeal),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            answer,
+            style: AetheraTokens.bodyMedium(color: AetheraTokens.starlight),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DailyQuestionAnswerSheet extends StatefulWidget {
+  final String question;
+  final String? initialAnswer;
+  final Future<void> Function(String answer) onSubmit;
+
+  const _DailyQuestionAnswerSheet({
+    required this.question,
+    required this.onSubmit,
+    this.initialAnswer,
+  });
+
+  @override
+  State<_DailyQuestionAnswerSheet> createState() =>
+      _DailyQuestionAnswerSheetState();
+}
+
+class _DailyQuestionAnswerSheetState extends State<_DailyQuestionAnswerSheet> {
+  late final TextEditingController _answerCtrl;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _answerCtrl = TextEditingController(text: widget.initialAnswer ?? '');
+  }
+
+  @override
+  void dispose() {
+    _answerCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final value = _answerCtrl.text.trim();
+    if (value.isEmpty) return;
+    setState(() => _isSaving = true);
+    await widget.onSubmit(value);
+    if (mounted) {
+      setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: AetheraGlassPanel(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Pregunta del dia', style: AetheraTokens.displaySmall()),
+            const SizedBox(height: 8),
+            Text(
+              widget.question,
+              style: AetheraTokens.bodyMedium(color: AetheraTokens.moonGlow),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withValues(alpha: 0.05),
+                border: Border.all(
+                  color: AetheraTokens.moonGlow.withValues(alpha: 0.15),
+                ),
+              ),
+              child: TextField(
+                controller: _answerCtrl,
+                maxLines: 4,
+                maxLength: 220,
+                style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
+                decoration: InputDecoration(
+                  hintText: 'Escribe tu respuesta...',
+                  hintStyle: AetheraTokens.bodyMedium(
+                    color: AetheraTokens.moonGlow.withValues(alpha: 0.4),
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  counterStyle: AetheraTokens.bodySmall(
+                    color: AetheraTokens.dusk,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            AetheraButton(
+              label: _isSaving ? 'Guardando...' : 'Enviar respuesta',
+              isLoading: _isSaving,
+              onPressed: _submit,
+            ),
           ],
         ),
       ),
