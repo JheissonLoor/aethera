@@ -34,6 +34,7 @@ abstract class AppConstants {
   static const String colMemories = 'memories';
   static const String colGoals = 'goals';
   static const String colCapsules = 'capsules';
+  static const String colDailyQuestions = 'daily_questions';
   static const String colRituals = 'rituals';
 
   // Presence (Realtime DB)
@@ -85,4 +86,27 @@ abstract class AppConstants {
     'island': '🏝️',
     'relic': '🜦',
   };
+
+  static const List<String> preguntasDiarias = [
+    '¿Qué pequeño momento de hoy te hizo pensar en mí?',
+    '¿Qué te gustaría que vivamos juntos este mes?',
+    '¿Qué detalle mío te hace sonreír sin darte cuenta?',
+    '¿Qué te gustaría que mejoremos como equipo?',
+    '¿Cuál es un recuerdo nuestro que quieres repetir pronto?',
+    '¿Qué canción describe cómo te sientes conmigo hoy?',
+    '¿Qué te gustaría agradecerme hoy?',
+    '¿Qué meta compartida te emociona más ahora?',
+    '¿Qué te gustaría que hagamos en nuestra próxima cita?',
+    '¿Qué emoción quieres que cuidemos más esta semana?',
+    '¿Qué frase te gustaría escuchar de mí hoy?',
+    '¿Qué aventura pequeña podríamos empezar juntos?',
+    '¿Qué hábito bonito quieres construir entre los dos?',
+    '¿Qué parte de nuestra historia te enorgullece más?',
+    '¿Qué sueño personal quieres que te acompañe a cumplir?',
+    '¿Qué valor sientes más fuerte en nuestra relación?',
+    '¿Qué tema te gustaría conversar con calma conmigo?',
+    '¿Qué cosa simple te haría sentir más cerca hoy?',
+    '¿Qué aprendizaje te dejó nuestra relación este año?',
+    '¿Qué promesa te gustaría que nos hagamos hoy?',
+  ];
 }

@@ -11,6 +11,7 @@ import 'package:aethera/shared/models/emotion_model.dart';
 import 'package:aethera/shared/models/memory_model.dart';
 import 'package:aethera/shared/models/goal_model.dart';
 import 'package:aethera/shared/models/time_capsule_model.dart';
+import 'package:aethera/shared/models/daily_question_model.dart';
 import 'package:aethera/shared/models/wish_model.dart';
 import 'package:aethera/core/constants/app_constants.dart';
 import 'package:aethera/core/services/presence_service.dart';
@@ -25,6 +26,7 @@ class UniverseAppState {
   final List<GoalModel> goals;
   final List<TimeCapsuleModel> capsules;
   final String? currentUserId;
+  final DailyQuestionModel? dailyQuestion;
   final bool partnerOnline;
   final bool receivedPulse;
   final bool newMemoryFromPartner;
@@ -47,6 +49,7 @@ class UniverseAppState {
     this.goals = const [],
     this.capsules = const [],
     this.currentUserId,
+    this.dailyQuestion,
     this.partnerOnline = false,
     this.receivedPulse = false,
     this.newMemoryFromPartner = false,
@@ -61,6 +64,20 @@ class UniverseAppState {
   String get combinedMood => couple?.combinedEmotion ?? 'neutral';
   int get connectionStrength => couple?.connectionStrength ?? 0;
   int get universeLevel => couple?.universeState.level ?? 1;
+  String? get partnerUserId {
+    final me = currentUserId;
+    final pair = couple;
+    if (me == null || pair == null) return null;
+    if (pair.user1Id == me) return pair.user2Id.isEmpty ? null : pair.user2Id;
+    return pair.user1Id.isEmpty ? null : pair.user1Id;
+  }
+
+  bool get hasAnsweredDailyQuestion =>
+      dailyQuestion?.isAnsweredBy(currentUserId) ?? false;
+  bool get isDailyQuestionRevealed => dailyQuestion?.isRevealed ?? false;
+  String? get myDailyQuestionAnswer => dailyQuestion?.answerBy(currentUserId);
+  String? get partnerDailyQuestionAnswer =>
+      dailyQuestion?.answerBy(partnerUserId);
   bool get showAurora =>
       partnerOnline || receivedPulse || connectionStrength >= 60;
 
@@ -71,6 +88,8 @@ class UniverseAppState {
     List<TimeCapsuleModel>? capsules,
     String? currentUserId,
     bool clearCurrentUserId = false,
+    DailyQuestionModel? dailyQuestion,
+    bool clearDailyQuestion = false,
     bool? partnerOnline,
     bool? receivedPulse,
     bool? newMemoryFromPartner,
@@ -90,6 +109,8 @@ class UniverseAppState {
     capsules: capsules ?? this.capsules,
     currentUserId:
         clearCurrentUserId ? null : (currentUserId ?? this.currentUserId),
+    dailyQuestion:
+        clearDailyQuestion ? null : (dailyQuestion ?? this.dailyQuestion),
     partnerOnline: partnerOnline ?? this.partnerOnline,
     receivedPulse: receivedPulse ?? this.receivedPulse,
     newMemoryFromPartner: newMemoryFromPartner ?? this.newMemoryFromPartner,
@@ -128,6 +149,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _memoriesSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _goalsSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _capsulesSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _dailyQuestionSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _wishesSub;
   StreamSubscription<bool>? _partnerOnlineSub;
   StreamSubscription<bool>? _pulseSub;
@@ -175,6 +197,17 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         currentUserId: user.uid,
         isLoading: false,
       );
+
+      _myUserId = user.uid;
+      _coupleId = coupleId;
+      _isUser1 = initialCoupleData['user1Id'] == user.uid;
+
+      final partnerId = initialCoupleData['user2Id'] as String? ?? '';
+      if (partnerId.isNotEmpty) {
+        _subscribeToDailyQuestion(coupleId: coupleId);
+      } else {
+        state = state.copyWith(clearDailyQuestion: true);
+      }
 
       // Real-time couple listener
       _coupleSub = _db.collection('couples').doc(coupleId).snapshots().listen((
@@ -279,11 +312,6 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
             state = state.copyWith(capsules: capsules);
           });
 
-      // Track IDs for wish system
-      _myUserId = user.uid;
-      _coupleId = coupleId;
-      _isUser1 = initialCoupleData['user1Id'] == user.uid;
-
       // Real-time wishes stream - show incoming wish from partner
       _wishesSub = _db
           .collection('wishes')
@@ -312,6 +340,66 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     } catch (_) {
       _fallbackToMockOrEmpty();
     }
+  }
+
+  void _subscribeToDailyQuestion({required String coupleId}) {
+    _dailyQuestionSub?.cancel();
+    final today = dayKey(DateTime.now());
+    final docId = _dailyQuestionDocId(coupleId, today);
+    final ref = _db.collection(AppConstants.colDailyQuestions).doc(docId);
+
+    _dailyQuestionSub = ref.snapshots().listen((snap) {
+      final data = snap.data();
+      if (snap.exists && data != null) {
+        state = state.copyWith(
+          dailyQuestion: DailyQuestionModel.fromMap(snap.id, data),
+        );
+        return;
+      }
+
+      final seeded = DailyQuestionModel(
+        id: docId,
+        coupleId: coupleId,
+        dayKey: today,
+        question: _preguntaParaDia(today),
+        answers: const <String, String>{},
+        createdAt: DateTime.now(),
+      );
+
+      state = state.copyWith(dailyQuestion: seeded);
+      unawaited(_ensureDailyQuestionExists(ref: ref, question: seeded));
+    });
+  }
+
+  Future<void> _ensureDailyQuestionExists({
+    required DocumentReference<Map<String, dynamic>> ref,
+    required DailyQuestionModel question,
+  }) async {
+    try {
+      await _db.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        if (snap.exists) return;
+        tx.set(ref, question.toMap());
+      });
+    } catch (_) {}
+  }
+
+  String _dailyQuestionDocId(String coupleId, String today) =>
+      '${coupleId}_$today';
+
+  String _preguntaParaDia(String today) {
+    final pool = AppConstants.preguntasDiarias;
+    if (pool.isEmpty) return '¿Cómo te sentiste hoy en nuestra relación?';
+    final index = _hashEstable(today) % pool.length;
+    return pool[index];
+  }
+
+  int _hashEstable(String input) {
+    var hash = 0;
+    for (final unit in input.codeUnits) {
+      hash = ((hash * 31) + unit) & 0x7fffffff;
+    }
+    return hash;
   }
 
   void _subscribeToPresence() {
@@ -483,6 +571,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       _memoriesSub?.cancel();
       _goalsSub?.cancel();
       _capsulesSub?.cancel();
+      _dailyQuestionSub?.cancel();
       _wishesSub?.cancel();
       _partnerOnlineSub?.cancel();
       _pulseSub?.cancel();
@@ -490,6 +579,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       _memoriesSub = null;
       _goalsSub = null;
       _capsulesSub = null;
+      _dailyQuestionSub = null;
       _wishesSub = null;
       _partnerOnlineSub = null;
       _pulseSub = null;
@@ -514,6 +604,37 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       'fromUserId': userId,
       'createdAt': DateTime.now().millisecondsSinceEpoch,
       'seen': false,
+    });
+  }
+
+  Future<void> submitDailyQuestionAnswer(String answer) async {
+    final round = state.dailyQuestion;
+    final userId =
+        _myUserId ??
+        state.currentUserId ??
+        FirebaseAuth.instance.currentUser?.uid;
+    if (round == null || userId == null) return;
+
+    final normalized = answer.trim();
+    if (normalized.isEmpty) return;
+
+    final roundRef = _db
+        .collection(AppConstants.colDailyQuestions)
+        .doc(round.id);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(roundRef);
+      final data = snap.data();
+      if (data == null) return;
+
+      final current = DailyQuestionModel.fromMap(snap.id, data);
+      final answers = Map<String, String>.from(current.answers);
+      answers[userId] = normalized;
+
+      final updates = <String, dynamic>{'answers': answers};
+      if (answers.length >= 2 && current.revealedAt == null) {
+        updates['revealedAt'] = DateTime.now().millisecondsSinceEpoch;
+      }
+      tx.update(roundRef, updates);
     });
   }
 
@@ -701,6 +822,16 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
           unlockAt: DateTime.now().add(const Duration(days: 7)),
         ),
       ],
+      dailyQuestion: DailyQuestionModel(
+        id: 'couple_demo_${dayKey(DateTime.now())}',
+        coupleId: 'couple_demo',
+        dayKey: dayKey(DateTime.now()),
+        question: _preguntaParaDia(dayKey(DateTime.now())),
+        answers: const <String, String>{
+          'user1': 'Hoy me acordé de ti cuando vi el atardecer.',
+        },
+        createdAt: DateTime.now(),
+      ),
     );
   }
 
@@ -716,6 +847,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     _memoriesSub?.cancel();
     _goalsSub?.cancel();
     _capsulesSub?.cancel();
+    _dailyQuestionSub?.cancel();
     _wishesSub?.cancel();
     _partnerOnlineSub?.cancel();
     _pulseSub?.cancel();
