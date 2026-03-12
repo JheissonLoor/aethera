@@ -21,7 +21,18 @@ import 'package:aethera/features/universe/widgets/nebula_layer.dart';
 import 'package:aethera/features/universe/widgets/shooting_star_overlay.dart';
 import 'package:aethera/core/constants/app_constants.dart';
 import 'package:aethera/shared/models/goal_model.dart';
+import 'package:aethera/shared/models/time_capsule_model.dart';
 import 'package:aethera/core/services/music_service.dart';
+
+String _formatDateTimeLabel(BuildContext context, DateTime dateTime) {
+  final localizations = MaterialLocalizations.of(context);
+  final date = localizations.formatCompactDate(dateTime);
+  final time = localizations.formatTimeOfDay(
+    TimeOfDay.fromDateTime(dateTime),
+    alwaysUse24HourFormat: true,
+  );
+  return '$date $time';
+}
 
 class UniverseScreen extends ConsumerStatefulWidget {
   const UniverseScreen({super.key});
@@ -81,22 +92,22 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ── Layer 1: Emotional sky gradient ──────────────────────
+          // â”€â”€ Layer 1: Emotional sky gradient â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           EmotionalSky(combinedMood: state.combinedMood),
 
-          // ── Layer 1.5: Nebula clouds (appear at level 2+) ────────
+          // â”€â”€ Layer 1.5: Nebula clouds (appear at level 2+) â”€â”€â”€â”€â”€â”€â”€â”€
           NebulaLayer(universeLevel: state.universeLevel),
 
-          // ── Layer 2: Star field ───────────────────────────────────
+          // â”€â”€ Layer 2: Star field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           const CosmicBackground(),
 
-          // ── Layer 2.5: Shooting stars ─────────────────────────────
+          // â”€â”€ Layer 2.5: Shooting stars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           const ShootingStarOverlay(),
 
-          // ── Layer 3: Aurora (when partner online / high connection)
+          // â”€â”€ Layer 3: Aurora (when partner online / high connection)
           AuroraEffect(opacity: state.showAurora ? 1.0 : 0.0),
 
-          // ── Layer 4: Horizon + goals ──────────────────────────────
+          // â”€â”€ Layer 4: Horizon + goals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Positioned(
             left: 0,
             right: 0,
@@ -108,15 +119,27 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
             ),
           ),
 
-          // ── Layer 5: Memory objects ───────────────────────────────
+          // â”€â”€ Layer 5: Memory objects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           ..._buildMemoryObjects(context, state),
 
-          // ── Layer 6: Heartbeat (partner online or received pulse) ──
+          // â”€â”€ Layer 6: Heartbeat (partner online or received pulse) â”€â”€
           HeartbeatOverlay(
             isActive: state.partnerOnline || state.receivedPulse,
           ),
 
-          // ── Layer 7.5: New memory notification toast ──────────────────
+          if (state.capsules.isNotEmpty)
+            Positioned(
+              top: 108,
+              left: 20,
+              right: 20,
+              child: _TimeCapsuleStatusPanel(
+                capsules: state.capsules,
+                currentUserId: state.currentUserId,
+                onOpenCapsule: _openCapsule,
+              ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.15, end: 0),
+            ),
+
+          // â”€â”€ Layer 7.5: New memory notification toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           if (state.newMemoryFromPartner)
             Positioned(
               top: 160,
@@ -128,7 +151,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
                   .slideY(begin: -0.4, end: 0),
             ),
 
-          // ── Emotion feedback overlay ──────────────────────────────────
+          // â”€â”€ Emotion feedback overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           if (state.emotionFeedback != null)
             Positioned.fill(
               child: _EmotionRippleOverlay(
@@ -136,7 +159,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               ).animate().fadeIn(duration: 300.ms),
             ),
 
-          // ── Incoming wish overlay (shooting star from partner) ────────
+          // â”€â”€ Incoming wish overlay (shooting star from partner) â”€â”€â”€â”€â”€â”€â”€â”€
           if (state.incomingWish != null)
             Positioned.fill(
               child: _IncomingWishOverlay(
@@ -160,7 +183,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               ),
             ),
 
-          // ── Solo mode invite banner ───────────────────────────────
+          // â”€â”€ Solo mode invite banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           if (state.couple?.isSolo == true)
             Positioned(
               left: 20,
@@ -172,7 +195,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
                   .slideY(begin: 0.3, end: 0),
             ),
 
-          // ── Layer 7: UI Overlay ───────────────────────────────────
+          // â”€â”€ Layer 7: UI Overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           SafeArea(
             child: Column(
               children: [
@@ -182,7 +205,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
                 ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2),
                 const Spacer(),
                 // Bottom action bar
-                _BottomBar(state: state)
+                _BottomBar(state: state, onOpenCapsule: _openCapsule)
                     .animate()
                     .fadeIn(duration: 800.ms, delay: 200.ms)
                     .slideY(begin: 0.2),
@@ -245,9 +268,27 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
           ),
     );
   }
+
+  Future<void> _openCapsule(TimeCapsuleModel capsule) async {
+    final opened = await ref
+        .read(universeProvider.notifier)
+        .openTimeCapsule(capsule.id);
+    if (!mounted) return;
+    if (opened == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Esta capsula aun no se puede abrir.')),
+      );
+      return;
+    }
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _OpenedCapsuleSheet(capsule: opened),
+    );
+  }
 }
 
-// ─── Top Bar ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Top Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TopBar extends ConsumerWidget {
   final UniverseAppState state;
@@ -295,7 +336,7 @@ class _TopBar extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 10),
-            // Row 2: User orb ── connection bar ── partner orb + status dot
+            // Row 2: User orb â”€â”€ connection bar â”€â”€ partner orb + status dot
             Row(
               children: [
                 EmotionOrb(
@@ -393,7 +434,7 @@ class _ConnectionBar extends StatelessWidget {
   }
 }
 
-// ─── Horizon Layer ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Horizon Layer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _HorizonLayer extends StatelessWidget {
   final UniverseAppState state;
@@ -432,11 +473,13 @@ class _HorizonLayer extends StatelessWidget {
   }
 }
 
-// ─── Bottom Bar ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Bottom Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _BottomBar extends ConsumerWidget {
   final UniverseAppState state;
-  const _BottomBar({required this.state});
+  final Future<void> Function(TimeCapsuleModel capsule) onOpenCapsule;
+
+  const _BottomBar({required this.state, required this.onOpenCapsule});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -445,31 +488,45 @@ class _BottomBar extends ConsumerWidget {
       child: AetheraGlassPanel(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _ActionButton(
-              icon: '💭',
-              label: 'Sentir',
-              onTap: () => _showEmotionSheet(context, ref),
+            Expanded(
+              child: _ActionButton(
+                icon: '💭',
+                label: 'Sentir',
+                onTap: () => _showEmotionSheet(context, ref),
+              ),
             ),
-            _ActionButton(
-              icon: '✦',
-              label: 'Memoria',
-              onTap: () => _showAddMemorySheet(context, ref),
+            Expanded(
+              child: _ActionButton(
+                icon: '✦',
+                label: 'Memoria',
+                onTap: () => _showAddMemorySheet(context, ref),
+              ),
             ),
-            // Center FAB — send a heartbeat pulse to partner
+            // Center FAB - send a heartbeat pulse to partner
             _PulseFAB(
               onTap: () => ref.read(universeProvider.notifier).sendPulse(),
             ),
-            _ActionButton(
-              icon: '✨',
-              label: 'Deseo',
-              onTap: () => _showWishSheet(context, ref),
+            Expanded(
+              child: _ActionButton(
+                icon: '✨',
+                label: 'Deseo',
+                onTap: () => _showWishSheet(context, ref),
+              ),
             ),
-            _ActionButton(
-              icon: '🌙',
-              label: 'Ritual',
-              onTap: () => context.push(AetheraRoutes.ritual),
+            Expanded(
+              child: _ActionButton(
+                icon: '⏳',
+                label: 'Capsula',
+                onTap: () => _showCreateCapsuleSheet(context, ref),
+              ),
+            ),
+            Expanded(
+              child: _ActionButton(
+                icon: '🌙',
+                label: 'Ritual',
+                onTap: () => context.push(AetheraRoutes.ritual),
+              ),
             ),
           ],
         ),
@@ -529,6 +586,48 @@ class _BottomBar extends ConsumerWidget {
           ),
     );
   }
+
+  void _showCreateCapsuleSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder:
+          (_) => _CreateCapsuleSheet(
+            onCreate: (title, message, unlockAt) async {
+              Navigator.of(context).pop();
+              await ref
+                  .read(universeProvider.notifier)
+                  .createTimeCapsule(
+                    title: title,
+                    message: message,
+                    unlockAt: unlockAt,
+                  );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Capsula enviada al futuro.')),
+                );
+              }
+            },
+            onOpenLatest: () async {
+              final currentState = ref.read(universeProvider);
+              final available =
+                  currentState.capsules
+                      .where(
+                        (capsule) =>
+                            capsule.isUnlocked &&
+                            !capsule.isOpenedBy(currentState.currentUserId),
+                      )
+                      .toList()
+                    ..sort((a, b) => a.unlockAt.compareTo(b.unlockAt));
+              if (available.isNotEmpty) {
+                Navigator.of(context).pop();
+                await onOpenCapsule(available.first);
+              }
+            },
+          ),
+    );
+  }
 }
 
 class _ActionButton extends StatelessWidget {
@@ -548,7 +647,6 @@ class _ActionButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: SizedBox(
-        width: 60,
         height: 54,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -563,7 +661,369 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-// ─── Emotion Check-In Sheet ────────────────────────────────────────────────────
+class _TimeCapsuleStatusPanel extends StatelessWidget {
+  final List<TimeCapsuleModel> capsules;
+  final String? currentUserId;
+  final Future<void> Function(TimeCapsuleModel capsule) onOpenCapsule;
+
+  const _TimeCapsuleStatusPanel({
+    required this.capsules,
+    required this.currentUserId,
+    required this.onOpenCapsule,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final pending =
+        capsules.where((capsule) => capsule.unlockAt.isAfter(now)).toList()
+          ..sort((a, b) => a.unlockAt.compareTo(b.unlockAt));
+    final available =
+        capsules
+            .where(
+              (capsule) =>
+                  capsule.isUnlocked && !capsule.isOpenedBy(currentUserId),
+            )
+            .toList()
+          ..sort((a, b) => a.unlockAt.compareTo(b.unlockAt));
+
+    final nextCapsule = available.isNotEmpty ? available.first : null;
+    final nextUnlock = pending.isNotEmpty ? pending.first.unlockAt : null;
+
+    return AetheraGlassPanel(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Text('⏳', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Text(
+                'Capsulas del tiempo',
+                style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
+              ),
+              const Spacer(),
+              Text(
+                '${available.length} listas',
+                style: AetheraTokens.labelSmall(
+                  color: AetheraTokens.auroraTeal,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            nextUnlock == null
+                ? 'No hay capsulas pendientes por abrir.'
+                : 'Proxima apertura: ${_formatDateTimeLabel(context, nextUnlock)}',
+            style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+          ),
+          if (nextCapsule != null) ...[
+            const SizedBox(height: 10),
+            AetheraButton(
+              label: 'Abrir capsula',
+              variant: AetheraButtonVariant.outlined,
+              onPressed: () => onOpenCapsule(nextCapsule),
+              width: double.infinity,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CreateCapsuleSheet extends StatefulWidget {
+  final Future<void> Function(String title, String message, DateTime unlockAt)
+  onCreate;
+  final Future<void> Function() onOpenLatest;
+
+  const _CreateCapsuleSheet({
+    required this.onCreate,
+    required this.onOpenLatest,
+  });
+
+  @override
+  State<_CreateCapsuleSheet> createState() => _CreateCapsuleSheetState();
+}
+
+class _CreateCapsuleSheetState extends State<_CreateCapsuleSheet> {
+  final _titleCtrl = TextEditingController();
+  final _messageCtrl = TextEditingController();
+  DateTime _unlockAt = DateTime.now().add(const Duration(days: 3));
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _messageCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickUnlockAt() async {
+    final now = DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _unlockAt.isAfter(now) ? _unlockAt : now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365 * 5)),
+      builder:
+          (ctx, child) => Theme(
+            data: Theme.of(ctx).copyWith(
+              colorScheme: const ColorScheme.dark(
+                primary: AetheraTokens.auroraTeal,
+                onPrimary: AetheraTokens.deepSpace,
+                surface: AetheraTokens.cosmicNight,
+                onSurface: AetheraTokens.starlight,
+              ),
+            ),
+            child: child!,
+          ),
+    );
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_unlockAt),
+      builder:
+          (ctx, child) => Theme(
+            data: Theme.of(ctx).copyWith(
+              colorScheme: const ColorScheme.dark(
+                primary: AetheraTokens.auroraTeal,
+                onPrimary: AetheraTokens.deepSpace,
+                surface: AetheraTokens.cosmicNight,
+                onSurface: AetheraTokens.starlight,
+              ),
+            ),
+            child: child!,
+          ),
+    );
+    if (pickedTime == null || !mounted) return;
+
+    final selectedDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    setState(() => _unlockAt = selectedDateTime);
+  }
+
+  Future<void> _create() async {
+    final message = _messageCtrl.text.trim();
+    if (message.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Escribe un mensaje.')));
+      return;
+    }
+    if (!_unlockAt.isAfter(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La fecha debe estar en el futuro.')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      await widget.onCreate(_titleCtrl.text.trim(), message, _unlockAt);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: AetheraGlassPanel(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Text('⏳', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 10),
+                Text('Nueva capsula', style: AetheraTokens.displaySmall()),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Escribe algo para que solo se abra en una fecha futura.',
+              style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+            ),
+            const SizedBox(height: 18),
+            _glassField(
+              controller: _titleCtrl,
+              hint: 'Titulo opcional...',
+              maxLines: 1,
+              maxLength: 48,
+            ),
+            const SizedBox(height: 10),
+            _glassField(
+              controller: _messageCtrl,
+              hint: 'Mensaje para el futuro...',
+              maxLines: 4,
+              maxLength: 280,
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _pickUnlockAt,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withValues(alpha: 0.05),
+                  border: Border.all(
+                    color: AetheraTokens.moonGlow.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.schedule_rounded,
+                      size: 18,
+                      color: AetheraTokens.auroraTeal,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _formatDateTimeLabel(context, _unlockAt),
+                        style: AetheraTokens.bodyMedium(
+                          color: AetheraTokens.starlight,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Cambiar',
+                      style: AetheraTokens.labelSmall(
+                        color: AetheraTokens.auroraTeal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            AetheraButton(
+              label: _isSaving ? 'Guardando...' : 'Guardar capsula',
+              isLoading: _isSaving,
+              onPressed: _create,
+            ),
+            const SizedBox(height: 8),
+            AetheraButton(
+              label: 'Abrir una capsula lista',
+              variant: AetheraButtonVariant.ghost,
+              onPressed: widget.onOpenLatest,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _glassField({
+    required TextEditingController controller,
+    required String hint,
+    required int maxLines,
+    required int maxLength,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.05),
+        border: Border.all(
+          color: AetheraTokens.moonGlow.withValues(alpha: 0.15),
+        ),
+      ),
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        maxLength: maxLength,
+        style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: AetheraTokens.bodyMedium(
+            color: AetheraTokens.moonGlow.withValues(alpha: 0.4),
+          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          counterStyle: AetheraTokens.bodySmall(color: AetheraTokens.dusk),
+        ),
+      ),
+    );
+  }
+}
+
+class _OpenedCapsuleSheet extends StatelessWidget {
+  final TimeCapsuleModel capsule;
+
+  const _OpenedCapsuleSheet({required this.capsule});
+
+  @override
+  Widget build(BuildContext context) {
+    return AetheraGlassPanel(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 30),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🕊️', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  capsule.title.isEmpty ? 'Capsula del tiempo' : capsule.title,
+                  style: AetheraTokens.displaySmall(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Programada para ${_formatDateTimeLabel(context, capsule.unlockAt)}',
+            style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              color: Colors.white.withValues(alpha: 0.04),
+              border: Border.all(
+                color: AetheraTokens.auroraTeal.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Text(
+              capsule.message,
+              style: AetheraTokens.bodyLarge(
+                color: AetheraTokens.starlight,
+              ).copyWith(height: 1.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// â”€â”€â”€ Emotion Check-In Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _EmotionCheckInSheet extends StatefulWidget {
   final ValueChanged<String> onSelect;
@@ -609,10 +1069,10 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('¿Cómo te sientes?', style: AetheraTokens.displaySmall()),
+            Text('Â¿CÃ³mo te sientes?', style: AetheraTokens.displaySmall()),
             const SizedBox(height: 6),
             Text(
-              'Tu universo reflejará lo que hay en tu corazón.',
+              'Tu universo reflejarÃ¡ lo que hay en tu corazÃ³n.',
               style: AetheraTokens.bodyMedium(color: AetheraTokens.moonGlow),
               textAlign: TextAlign.center,
             ),
@@ -706,7 +1166,7 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
   }
 }
 
-// ─── Add Memory Sheet ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Add Memory Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _AddMemorySheet extends StatefulWidget {
   final Future<void> Function(String title, String description, String type)
@@ -725,11 +1185,11 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
   bool _isSaving = false;
 
   static const _types = [
-    ('constellation', '⭐', 'Constelación'),
-    ('tree', '🌳', 'Árbol'),
-    ('lighthouse', '🏮', 'Faro'),
-    ('bridge', '🌉', 'Puente'),
-    ('island', '🏝️', 'Isla'),
+    ('constellation', 'â­', 'ConstelaciÃ³n'),
+    ('tree', 'ðŸŒ³', 'Ãrbol'),
+    ('lighthouse', 'ðŸ®', 'Faro'),
+    ('bridge', 'ðŸŒ‰', 'Puente'),
+    ('island', 'ðŸï¸', 'Isla'),
   ];
 
   @override
@@ -766,7 +1226,7 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
             Row(
               children: [
                 const Text(
-                  '✦',
+                  'âœ¦',
                   style: TextStyle(
                     color: AetheraTokens.auroraTeal,
                     fontSize: 18,
@@ -842,7 +1302,7 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
             // Title
             _glassField(
               controller: _titleCtrl,
-              hint: 'Título del recuerdo...',
+              hint: 'TÃ­tulo del recuerdo...',
               maxLines: 1,
             ),
 
@@ -851,14 +1311,14 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
             // Description
             _glassField(
               controller: _descCtrl,
-              hint: 'Cuéntame sobre este momento...',
+              hint: 'CuÃ©ntame sobre este momento...',
               maxLines: 3,
             ),
 
             const SizedBox(height: 24),
 
             AetheraButton(
-              label: 'Guardar memoria  ✦',
+              label: 'Guardar memoria  âœ¦',
               isLoading: _isSaving,
               onPressed: _save,
             ),
@@ -900,7 +1360,7 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
   }
 }
 
-// ─── Add Goal Sheet ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Add Goal Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _AddGoalSheet extends StatefulWidget {
   final Future<void> Function(
@@ -925,11 +1385,11 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
   bool _isSaving = false;
 
   static const _symbols = [
-    ('lighthouse', '🏮', 'Faro'),
-    ('castle', '🏰', 'Castillo'),
-    ('mountain', '⛰️', 'Montaña'),
-    ('island', '🏝️', 'Isla'),
-    ('bridge', '🌉', 'Puente'),
+    ('lighthouse', 'ðŸ®', 'Faro'),
+    ('castle', 'ðŸ°', 'Castillo'),
+    ('mountain', 'â›°ï¸', 'MontaÃ±a'),
+    ('island', 'ðŸï¸', 'Isla'),
+    ('bridge', 'ðŸŒ‰', 'Puente'),
   ];
 
   @override
@@ -988,7 +1448,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
             // Header
             Row(
               children: [
-                const Text('🎯', style: TextStyle(fontSize: 18)),
+                const Text('ðŸŽ¯', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 10),
                 Text('Nueva meta', style: AetheraTokens.displaySmall()),
               ],
@@ -1059,7 +1519,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
             // Title
             _glassField(
               controller: _titleCtrl,
-              hint: 'Título de la meta...',
+              hint: 'TÃ­tulo de la meta...',
               maxLines: 1,
             ),
 
@@ -1068,7 +1528,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
             // Description
             _glassField(
               controller: _descCtrl,
-              hint: 'Descríbela con detalle...',
+              hint: 'DescrÃ­bela con detalle...',
               maxLines: 2,
             ),
 
@@ -1091,7 +1551,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
                 ),
                 child: Row(
                   children: [
-                    const Text('📅', style: TextStyle(fontSize: 16)),
+                    const Text('ðŸ“…', style: TextStyle(fontSize: 16)),
                     const SizedBox(width: 12),
                     Text(
                       'Fecha objetivo: ${_targetDate.day}/${_targetDate.month}/${_targetDate.year}',
@@ -1113,7 +1573,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
             const SizedBox(height: 24),
 
             AetheraButton(
-              label: 'Crear meta  🎯',
+              label: 'Crear meta  ðŸŽ¯',
               isLoading: _isSaving,
               onPressed: _save,
             ),
@@ -1155,7 +1615,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
   }
 }
 
-// ─── Goal Detail Sheet ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Goal Detail Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _GoalDetailSheet extends StatefulWidget {
   final GoalModel goal;
@@ -1195,17 +1655,17 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
   String _iconForSymbol(String symbol) {
     switch (symbol) {
       case 'lighthouse':
-        return '🏮';
+        return 'ðŸ®';
       case 'bridge':
-        return '🌉';
+        return 'ðŸŒ‰';
       case 'island':
-        return '🏝️';
+        return 'ðŸï¸';
       case 'mountain':
-        return '⛰️';
+        return 'â›°ï¸';
       case 'castle':
-        return '🏰';
+        return 'ðŸ°';
       default:
-        return '🏛️';
+        return 'ðŸ›ï¸';
     }
   }
 
@@ -1264,9 +1724,9 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
             Row(
               children: [
                 _StatChip(
-                  icon: '📅',
+                  icon: 'ðŸ“…',
                   label:
-                      isCompleted ? 'Completada' : '$_daysLeft días restantes',
+                      isCompleted ? 'Completada' : '$_daysLeft dÃ­as restantes',
                   color:
                       isCompleted
                           ? AetheraTokens.goldenDawn
@@ -1274,7 +1734,7 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
                 ),
                 const SizedBox(width: 10),
                 _StatChip(
-                  icon: '✦',
+                  icon: 'âœ¦',
                   label: '$progressPercent% completado',
                   color: accentColor,
                 ),
@@ -1359,10 +1819,10 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('🏆', style: TextStyle(fontSize: 20)),
+                    const Text('ðŸ†', style: TextStyle(fontSize: 20)),
                     const SizedBox(width: 10),
                     Text(
-                      '¡Meta cumplida! +20 conexión',
+                      'Â¡Meta cumplida! +20 conexiÃ³n',
                       style: AetheraTokens.labelLarge(
                         color: AetheraTokens.goldenDawn,
                       ),
@@ -1377,7 +1837,7 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
               AetheraButton(
                 label:
                     _progress >= 1.0
-                        ? '¡Completar meta! 🏆'
+                        ? 'Â¡Completar meta! ðŸ†'
                         : 'Guardar progreso',
                 isLoading: _isSaving,
                 onPressed: _save,
@@ -1422,7 +1882,7 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-// ─── New Memory Toast ──────────────────────────────────────────────────────────
+// â”€â”€â”€ New Memory Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _NewMemoryToast extends StatelessWidget {
   @override
@@ -1441,12 +1901,12 @@ class _NewMemoryToast extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              '✦',
+              'âœ¦',
               style: TextStyle(color: AetheraTokens.auroraTeal, fontSize: 12),
             ),
             const SizedBox(width: 8),
             Text(
-              'Nueva memoria añadida al universo',
+              'Nueva memoria aÃ±adida al universo',
               style: AetheraTokens.labelSmall(color: AetheraTokens.auroraTeal),
             ),
           ],
@@ -1456,7 +1916,7 @@ class _NewMemoryToast extends StatelessWidget {
   }
 }
 
-// ─── Music Toggle Button ────────────────────────────────────────────────────
+// â”€â”€â”€ Music Toggle Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _MusicToggleButton extends StatefulWidget {
   @override
@@ -1503,7 +1963,7 @@ class _MusicToggleButtonState extends State<_MusicToggleButton> {
   }
 }
 
-// ─── Pulse FAB ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Pulse FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Animated heart button that sends a heartbeat pulse to the partner.
 // Shows a ripple + toast so the sender gets visual confirmation.
 
@@ -1577,7 +2037,7 @@ class _PulseFABState extends State<_PulseFAB>
   }
 }
 
-// ─── Emotion Ripple Overlay ─────────────────────────────────────────────────
+// â”€â”€â”€ Emotion Ripple Overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _EmotionRippleOverlay extends StatefulWidget {
   final String mood;
@@ -1636,19 +2096,19 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
   String _emotionLabel(String mood) {
     switch (mood) {
       case 'joy':
-        return 'Alegría ✨';
+        return 'AlegrÃ­a âœ¨';
       case 'love':
-        return 'Amor 💕';
+        return 'Amor ðŸ’•';
       case 'peace':
-        return 'Paz 🌿';
+        return 'Paz ðŸŒ¿';
       case 'longing':
-        return 'Anhelo 🌙';
+        return 'Anhelo ðŸŒ™';
       case 'melancholy':
-        return 'Melancolía 🌌';
+        return 'MelancolÃ­a ðŸŒŒ';
       case 'anxious':
-        return 'Angustia 🌊';
+        return 'Angustia ðŸŒŠ';
       default:
-        return 'Neutral ✦';
+        return 'Neutral âœ¦';
     }
   }
 
@@ -1711,7 +2171,7 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '+${AppConstants.pointsDailyCheckin} conexión',
+                              '+${AppConstants.pointsDailyCheckin} conexiÃ³n',
                               style: AetheraTokens.bodySmall(
                                 color: color.withValues(alpha: 0.8),
                               ),
@@ -1728,7 +2188,7 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
   }
 }
 
-// ─── Memory Detail Sheet ───────────────────────────────────────────────────────
+// â”€â”€â”€ Memory Detail Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _MemoryDetailSheet extends StatelessWidget {
   final String title;
@@ -1747,7 +2207,7 @@ class _MemoryDetailSheet extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('✦', style: TextStyle(fontSize: 20)),
+              const Text('âœ¦', style: TextStyle(fontSize: 20)),
               const SizedBox(width: 10),
               Expanded(child: Text(title, style: AetheraTokens.displaySmall())),
             ],
@@ -1761,7 +2221,7 @@ class _MemoryDetailSheet extends StatelessWidget {
   }
 }
 
-// ─── Streak Badge ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Streak Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _StreakBadge extends StatelessWidget {
   final int days;
@@ -1780,7 +2240,7 @@ class _StreakBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('🔥', style: TextStyle(fontSize: 9)),
+          const Text('ðŸ”¥', style: TextStyle(fontSize: 9)),
           const SizedBox(width: 3),
           Text(
             '$days',
@@ -1796,7 +2256,7 @@ class _StreakBadge extends StatelessWidget {
   }
 }
 
-// ─── Wish Sheet ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Wish Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _WishSheet extends StatefulWidget {
   final Future<void> Function(String message) onSend;
@@ -1845,7 +2305,7 @@ class _WishSheetState extends State<_WishSheet> {
                     ],
                   ).createShader(b),
               child: const Text(
-                '✨',
+                'âœ¨',
                 style: TextStyle(fontSize: 36, color: Colors.white),
               ),
             ),
@@ -1877,7 +2337,7 @@ class _WishSheetState extends State<_WishSheet> {
                 maxLength: 120,
                 style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
                 decoration: InputDecoration(
-                  hintText: 'Te pienso, te extraño, te amo...',
+                  hintText: 'Te pienso, te extraÃ±o, te amo...',
                   hintStyle: AetheraTokens.bodyMedium(
                     color: AetheraTokens.moonGlow.withValues(alpha: 0.4),
                   ),
@@ -1892,7 +2352,7 @@ class _WishSheetState extends State<_WishSheet> {
             ),
             const SizedBox(height: 20),
             AetheraButton(
-              label: _isSending ? 'Lanzando...' : 'Lanzar deseo  ✨',
+              label: _isSending ? 'Lanzando...' : 'Lanzar deseo  âœ¨',
               isLoading: _isSending,
               onPressed: _send,
             ),
@@ -1903,7 +2363,7 @@ class _WishSheetState extends State<_WishSheet> {
   }
 }
 
-// ─── Incoming Wish Overlay ──────────────────────────────────────────────────────
+// â”€â”€â”€ Incoming Wish Overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _IncomingWishOverlay extends StatefulWidget {
   final dynamic wish; // WishModel
@@ -2025,13 +2485,13 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
                                 ],
                               ).createShader(b),
                           child: const Text(
-                            '✨',
+                            'âœ¨',
                             style: TextStyle(fontSize: 40, color: Colors.white),
                           ),
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Un deseo llegó a tu universo',
+                          'Un deseo llegÃ³ a tu universo',
                           style: AetheraTokens.bodySmall(
                             color: AetheraTokens.moonGlow,
                           ),
@@ -2077,7 +2537,7 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
                               gradient: AetheraTokens.auroraGradient,
                             ),
                             child: Text(
-                              'Recibido  💕',
+                              'Recibido  ðŸ’•',
                               style: AetheraTokens.labelLarge(
                                 color: AetheraTokens.deepSpace,
                               ),
@@ -2147,7 +2607,7 @@ class _WishStarPainter extends CustomPainter {
       old.head != head || old.alpha != alpha;
 }
 
-// ─── Solo Mode Banner ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Solo Mode Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _SoloBanner extends StatelessWidget {
   final String inviteCode;
@@ -2184,7 +2644,7 @@ class _SoloBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Text('💫', style: TextStyle(fontSize: 18)),
+            const Text('ðŸ’«', style: TextStyle(fontSize: 18)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -2197,7 +2657,7 @@ class _SoloBanner extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Código: $inviteCode  •  Toca para conectar',
+                    'CÃ³digo: $inviteCode  â€¢  Toca para conectar',
                     style: AetheraTokens.bodySmall(
                       color: AetheraTokens.auroraTeal,
                     ),
@@ -2306,7 +2766,7 @@ class _CosmicEventCutsceneOverlayState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'EVENTO CÓSMICO DESBLOQUEADO',
+                          'EVENTO CÃ“SMICO DESBLOQUEADO',
                           style: AetheraTokens.labelLarge(
                             color: AetheraTokens.auroraTeal,
                           ),
@@ -2335,7 +2795,7 @@ class _CosmicEventCutsceneOverlayState
                         ),
                         const SizedBox(height: 14),
                         Text(
-                          '+${AppConstants.pointsSyncRitual} conexión • Reliquia forjada',
+                          '+${AppConstants.pointsSyncRitual} conexiÃ³n â€¢ Reliquia forjada',
                           style: AetheraTokens.bodyMedium(
                             color: AetheraTokens.starlight,
                           ),
