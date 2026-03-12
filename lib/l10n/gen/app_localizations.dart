@@ -112,6 +112,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Check your Firebase configuration and try again.'**
   String get startupErrorMessage;
+
+  /// Message shown while app startup is running
+  ///
+  /// In en, this message translates to:
+  /// **'Initializing your universe...'**
+  String get startupLoadingMessage;
+
+  /// Message shown when startup exceeds timeout
+  ///
+  /// In en, this message translates to:
+  /// **'Startup took too long. Please try again.'**
+  String get startupTimeoutMessage;
+
+  /// Button label to retry startup
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get startupRetryButton;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

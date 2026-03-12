@@ -11,5 +11,17 @@
   "startupErrorMessage": "Check your Firebase configuration and try again.",
   "@startupErrorMessage": {
     "description": "Description shown when startup fails"
+  },
+  "startupLoadingMessage": "Initializing your universe...",
+  "@startupLoadingMessage": {
+    "description": "Message shown while app startup is running"
+  },
+  "startupTimeoutMessage": "Startup took too long. Please try again.",
+  "@startupTimeoutMessage": {
+    "description": "Message shown when startup exceeds timeout"
+  },
+  "startupRetryButton": "Retry",
+  "@startupRetryButton": {
+    "description": "Button label to retry startup"
   }
 }

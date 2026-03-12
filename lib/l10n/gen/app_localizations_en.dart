@@ -16,4 +16,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get startupErrorMessage => 'Check your Firebase configuration and try again.';
+
+  @override
+  String get startupLoadingMessage => 'Initializing your universe...';
+
+  @override
+  String get startupTimeoutMessage => 'Startup took too long. Please try again.';
+
+  @override
+  String get startupRetryButton => 'Retry';
 }
