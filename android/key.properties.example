@@ -1,0 +1,7 @@
+# Copy this file to android/key.properties (gitignored) and fill real values.
+# Then run: flutter build appbundle --release
+
+storePassword=REPLACE_WITH_STORE_PASSWORD
+keyPassword=REPLACE_WITH_KEY_PASSWORD
+keyAlias=upload
+storeFile=../keystore/upload-keystore.jks
