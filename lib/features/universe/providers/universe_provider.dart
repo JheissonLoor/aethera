@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart'
     show Notifier, NotifierProvider;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:uuid/uuid.dart';
 import 'package:aethera/core/services/couple_service.dart';
+import 'package:aethera/core/services/offline_sync_queue_service.dart';
 import 'package:aethera/shared/models/couple_model.dart';
 import 'package:aethera/shared/models/emotion_model.dart';
 import 'package:aethera/shared/models/memory_model.dart';
@@ -18,7 +20,7 @@ import 'package:aethera/core/services/presence_service.dart';
 import 'package:aethera/core/services/notification_service.dart';
 import 'package:aethera/core/utils/streak_utils.dart';
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class UniverseAppState {
   final CoupleModel? couple;
@@ -27,6 +29,8 @@ class UniverseAppState {
   final List<TimeCapsuleModel> capsules;
   final String? currentUserId;
   final DailyQuestionModel? dailyQuestion;
+  final bool isSyncConnected;
+  final int pendingSyncActions;
   final bool partnerOnline;
   final bool receivedPulse;
   final bool newMemoryFromPartner;
@@ -50,6 +54,8 @@ class UniverseAppState {
     this.capsules = const [],
     this.currentUserId,
     this.dailyQuestion,
+    this.isSyncConnected = true,
+    this.pendingSyncActions = 0,
     this.partnerOnline = false,
     this.receivedPulse = false,
     this.newMemoryFromPartner = false,
@@ -90,6 +96,8 @@ class UniverseAppState {
     bool clearCurrentUserId = false,
     DailyQuestionModel? dailyQuestion,
     bool clearDailyQuestion = false,
+    bool? isSyncConnected,
+    int? pendingSyncActions,
     bool? partnerOnline,
     bool? receivedPulse,
     bool? newMemoryFromPartner,
@@ -111,6 +119,8 @@ class UniverseAppState {
         clearCurrentUserId ? null : (currentUserId ?? this.currentUserId),
     dailyQuestion:
         clearDailyQuestion ? null : (dailyQuestion ?? this.dailyQuestion),
+    isSyncConnected: isSyncConnected ?? this.isSyncConnected,
+    pendingSyncActions: pendingSyncActions ?? this.pendingSyncActions,
     partnerOnline: partnerOnline ?? this.partnerOnline,
     receivedPulse: receivedPulse ?? this.receivedPulse,
     newMemoryFromPartner: newMemoryFromPartner ?? this.newMemoryFromPartner,
@@ -129,7 +139,7 @@ class UniverseAppState {
   );
 }
 
-// ─── Notifier ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Notifier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class UniverseNotifier extends Notifier<UniverseAppState> {
   @override
@@ -142,8 +152,10 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
   }
 
   final _db = FirebaseFirestore.instance;
+  final _rtdb = FirebaseDatabase.instance;
   final _coupleService = CoupleService();
   final _presence = PresenceService();
+  final _offlineQueue = OfflineSyncQueueService();
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _coupleSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _memoriesSub;
@@ -151,6 +163,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _capsulesSub;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _dailyQuestionSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _wishesSub;
+  StreamSubscription<DatabaseEvent>? _syncConnectionSub;
   StreamSubscription<bool>? _partnerOnlineSub;
   StreamSubscription<bool>? _pulseSub;
 
@@ -163,13 +176,16 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
   final Set<String> _seenCosmicEventMemoryIds = <String>{};
   String? _myUserId;
   String? _coupleId;
+  bool _isFlushingQueuedActions = false;
 
-  // ── Init ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _init() async {
     _sessionPointsAwarded = false;
     _memoriesInitialized = false;
     _seenCosmicEventMemoryIds.clear();
+    await _updatePendingSyncCount();
+    _subscribeSyncConnectivity();
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -247,7 +263,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
                     cosmicEventName =
                         memory.title.isNotEmpty
                             ? memory.title
-                            : 'Evento Cósmico';
+                            : 'Evento CÃ³smico';
                     cosmicEventMemoryId = memory.id;
                   }
                   continue;
@@ -342,6 +358,127 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     }
   }
 
+  Future<void> _updatePendingSyncCount() async {
+    final count = await _offlineQueue.count();
+    if (ref.mounted) {
+      state = state.copyWith(pendingSyncActions: count);
+    }
+  }
+
+  void _subscribeSyncConnectivity() {
+    _syncConnectionSub?.cancel();
+    _syncConnectionSub = _rtdb.ref('.info/connected').onValue.listen((event) {
+      final connected = event.snapshot.value == true;
+      final wasConnected = state.isSyncConnected;
+      state = state.copyWith(isSyncConnected: connected);
+      if (connected && (!wasConnected || state.pendingSyncActions > 0)) {
+        unawaited(_flushQueuedActions());
+      }
+    });
+  }
+
+  Future<void> _enqueueSyncAction({
+    required String type,
+    required Map<String, dynamic> payload,
+  }) async {
+    final action = OfflineSyncAction(
+      id: const Uuid().v4(),
+      type: type,
+      payload: payload,
+      createdAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    await _offlineQueue.enqueue(action);
+    await _updatePendingSyncCount();
+  }
+
+  Future<void> _executeOrQueue({
+    required String type,
+    required Map<String, dynamic> payload,
+    required Future<void> Function() onlineTask,
+  }) async {
+    if (!state.isSyncConnected) {
+      await _enqueueSyncAction(type: type, payload: payload);
+      return;
+    }
+
+    try {
+      await onlineTask();
+    } catch (_) {
+      final connectedSnap = await _rtdb.ref('.info/connected').get();
+      final connectedNow = connectedSnap.value == true;
+      state = state.copyWith(isSyncConnected: connectedNow);
+      if (!connectedNow) {
+        await _enqueueSyncAction(type: type, payload: payload);
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _flushQueuedActions() async {
+    if (_isFlushingQueuedActions || !state.isSyncConnected) return;
+    _isFlushingQueuedActions = true;
+    try {
+      final pending = await _offlineQueue.load();
+      if (pending.isEmpty) {
+        await _updatePendingSyncCount();
+        return;
+      }
+
+      final processed = <String>{};
+      for (final action in pending) {
+        try {
+          await _runQueuedAction(action);
+          processed.add(action.id);
+        } catch (_) {
+          final connectedSnap = await _rtdb.ref('.info/connected').get();
+          final connectedNow = connectedSnap.value == true;
+          state = state.copyWith(isSyncConnected: connectedNow);
+          if (!connectedNow) break;
+          processed.add(action.id);
+        }
+      }
+
+      if (processed.isNotEmpty) {
+        await _offlineQueue.removeByIds(processed);
+      }
+      await _updatePendingSyncCount();
+    } finally {
+      _isFlushingQueuedActions = false;
+    }
+  }
+
+  Future<void> _runQueuedAction(OfflineSyncAction action) async {
+    switch (action.type) {
+      case 'updateEmotion':
+        await _persistEmotion(action.payload['mood'] as String? ?? '');
+        return;
+      case 'addMemory':
+        await _persistMemoryFromPayload(action.payload);
+        return;
+      case 'addGoal':
+        await _persistGoalFromPayload(action.payload);
+        return;
+      case 'updateGoalProgress':
+        await _persistGoalProgressFromPayload(action.payload);
+        return;
+      case 'sendWish':
+        await _persistWishFromPayload(action.payload);
+        return;
+      case 'createTimeCapsule':
+        await _persistCapsuleFromPayload(action.payload);
+        return;
+      case 'submitDailyAnswer':
+        await _persistDailyAnswerFromPayload(action.payload);
+        return;
+      case 'sendPulse':
+        await _persistPulseFromPayload(action.payload);
+        return;
+      default:
+        return;
+    }
+  }
+
   void _subscribeToDailyQuestion({required String coupleId}) {
     _dailyQuestionSub?.cancel();
     final today = dayKey(DateTime.now());
@@ -389,7 +526,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
 
   String _preguntaParaDia(String today) {
     final pool = AppConstants.preguntasDiarias;
-    if (pool.isEmpty) return '¿Cómo te sentiste hoy en nuestra relación?';
+    if (pool.isEmpty) return 'Â¿CÃ³mo te sentiste hoy en nuestra relaciÃ³n?';
     final index = _hashEstable(today) % pool.length;
     return pool[index];
   }
@@ -437,7 +574,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     });
   }
 
-  // ── Actions ───────────────────────────────────────────────────────────────
+  // â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> updateEmotion(String mood) async {
     if (state.couple == null) return;
@@ -461,15 +598,11 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     Timer(const Duration(seconds: 3), () {
       if (ref.mounted) state = state.copyWith(clearEmotionFeedback: true);
     });
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final emotionField = _isUser1 ? 'user1Emotion' : 'user2Emotion';
-      await _db.collection('couples').doc(state.couple!.id).update({
-        emotionField: emotion.toMap(),
-        'connectionStrength': updated.connectionStrength,
-      });
-      await _tryIncrementStreak();
-    }
+    await _executeOrQueue(
+      type: 'updateEmotion',
+      payload: {'mood': mood},
+      onlineTask: () => _persistEmotion(mood),
+    );
   }
 
   Future<void> addMemory({
@@ -477,24 +610,38 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     required String description,
     required String type,
   }) async {
-    final coupleId = state.couple?.id;
-    if (coupleId == null) return;
+    final coupleId = _coupleId ?? state.couple?.id;
+    final userId = _myUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    if (coupleId == null || userId == null) return;
+
     final memory = MemoryModel(
       id: const Uuid().v4(),
       coupleId: coupleId,
       type: type,
       title: title,
       description: description,
-      createdByUserId: _myUserId ?? FirebaseAuth.instance.currentUser?.uid,
+      createdByUserId: userId,
       createdAt: DateTime.now(),
       posX: 0.15 + (state.memories.length * 0.2) % 0.7,
       posY: 0.55 + (state.memories.length % 3) * 0.08,
     );
-    // Stream will update state — no manual update needed
-    await _db.collection('memories').doc(memory.id).set(memory.toMap());
-    await _db.collection('couples').doc(coupleId).update({
-      'connectionStrength': FieldValue.increment(AppConstants.pointsAddMemory),
-    });
+
+    state = state.copyWith(memories: [...state.memories, memory]);
+    await _executeOrQueue(
+      type: 'addMemory',
+      payload: {
+        'id': memory.id,
+        'coupleId': memory.coupleId,
+        'type': memory.type,
+        'title': memory.title,
+        'description': memory.description,
+        'createdByUserId': memory.createdByUserId,
+        'createdAt': memory.createdAt.millisecondsSinceEpoch,
+        'posX': memory.posX,
+        'posY': memory.posY,
+      },
+      onlineTask: () => _persistMemory(memory),
+    );
   }
 
   Future<void> addGoal({
@@ -503,8 +650,9 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     required String symbol,
     required DateTime targetDate,
   }) async {
-    final coupleId = state.couple?.id;
+    final coupleId = _coupleId ?? state.couple?.id;
     if (coupleId == null) return;
+
     final goal = GoalModel(
       id: const Uuid().v4(),
       coupleId: coupleId,
@@ -515,18 +663,32 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       symbol: symbol,
       createdAt: DateTime.now(),
     );
-    // Stream will update state — no manual update needed
-    await _db.collection('goals').doc(goal.id).set(goal.toMap());
+
+    state = state.copyWith(goals: [...state.goals, goal]);
+    await _executeOrQueue(
+      type: 'addGoal',
+      payload: {
+        'id': goal.id,
+        'coupleId': goal.coupleId,
+        'title': goal.title,
+        'description': goal.description,
+        'targetDate': goal.targetDate.millisecondsSinceEpoch,
+        'progress': goal.progress,
+        'symbol': goal.symbol,
+        'createdAt': goal.createdAt.millisecondsSinceEpoch,
+      },
+      onlineTask: () => _persistGoal(goal),
+    );
   }
 
   Future<void> updateGoalProgress(String goalId, double newProgress) async {
-    final coupleId = state.couple?.id;
+    final coupleId = _coupleId ?? state.couple?.id;
     if (coupleId == null) return;
+
     final existing = state.goals.firstWhere((g) => g.id == goalId);
     final clamped = newProgress.clamp(0.0, 1.0);
     final isNowCompleted = clamped >= 1.0 && !existing.isCompleted;
 
-    // Immediate local update for responsive slider UI
     final updatedGoal = GoalModel(
       id: existing.id,
       coupleId: existing.coupleId,
@@ -542,28 +704,36 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       goals: state.goals.map((g) => g.id == goalId ? updatedGoal : g).toList(),
     );
 
-    final Map<String, dynamic> data = {'progress': clamped};
-    if (isNowCompleted) {
-      data['completedAt'] = DateTime.now().millisecondsSinceEpoch;
-    }
-    await _db.collection('goals').doc(goalId).update(data);
-    if (isNowCompleted) {
-      await _db.collection('couples').doc(coupleId).update({
-        'connectionStrength': FieldValue.increment(
-          AppConstants.pointsGoalComplete,
-        ),
-      });
-    }
+    await _executeOrQueue(
+      type: 'updateGoalProgress',
+      payload: {'goalId': goalId, 'coupleId': coupleId, 'progress': clamped},
+      onlineTask:
+          () => _persistGoalProgress(
+            goalId: goalId,
+            coupleId: coupleId,
+            progress: clamped,
+          ),
+    );
   }
 
-  Future<void> sendPulse() async => _presence.sendPulse();
+  Future<void> sendPulse() async {
+    final coupleId = _coupleId ?? state.couple?.id;
+    final userId = _myUserId ?? state.currentUserId;
+    if (coupleId == null || userId == null) return;
+
+    await _executeOrQueue(
+      type: 'sendPulse',
+      payload: {'coupleId': coupleId, 'userId': userId},
+      onlineTask: () => _presence.sendPulse(),
+    );
+  }
 
   /// Joins a partner's universe using their invite code.
   /// Used when the user is in solo mode and wants to connect with a partner.
   /// Returns an error string on failure, or null on success.
   Future<String?> joinPartner(String inviteCode) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return 'No hay sesión activa';
+    if (user == null) return 'No hay sesiÃ³n activa';
     try {
       await _coupleService.joinCouple(inviteCode, user.uid);
       // Re-initialize to pick up new couple streams
@@ -573,6 +743,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       _capsulesSub?.cancel();
       _dailyQuestionSub?.cancel();
       _wishesSub?.cancel();
+      _syncConnectionSub?.cancel();
       _partnerOnlineSub?.cancel();
       _pulseSub?.cancel();
       _coupleSub = null;
@@ -581,6 +752,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       _capsulesSub = null;
       _dailyQuestionSub = null;
       _wishesSub = null;
+      _syncConnectionSub = null;
       _partnerOnlineSub = null;
       _pulseSub = null;
       state = const UniverseAppState(isLoading: true);
@@ -594,17 +766,30 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
   /// Sends a wish/message that flies as a shooting star to the partner's universe.
   Future<void> sendWish(String message) async {
     final coupleId = _coupleId ?? state.couple?.id;
-    final userId = _myUserId;
-    if (coupleId == null || userId == null || message.trim().isEmpty) return;
+    final userId = _myUserId ?? state.currentUserId;
+    final normalized = message.trim();
+    if (coupleId == null || userId == null || normalized.isEmpty) return;
+
     final id = const Uuid().v4();
-    await _db.collection('wishes').doc(id).set({
-      'id': id,
-      'coupleId': coupleId,
-      'message': message.trim(),
-      'fromUserId': userId,
-      'createdAt': DateTime.now().millisecondsSinceEpoch,
-      'seen': false,
-    });
+    final createdAt = DateTime.now().millisecondsSinceEpoch;
+    await _executeOrQueue(
+      type: 'sendWish',
+      payload: {
+        'id': id,
+        'coupleId': coupleId,
+        'fromUserId': userId,
+        'message': normalized,
+        'createdAt': createdAt,
+      },
+      onlineTask:
+          () => _persistWish(
+            id: id,
+            coupleId: coupleId,
+            userId: userId,
+            message: normalized,
+            createdAtMs: createdAt,
+          ),
+    );
   }
 
   Future<void> submitDailyQuestionAnswer(String answer) async {
@@ -618,24 +803,34 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     final normalized = answer.trim();
     if (normalized.isEmpty) return;
 
-    final roundRef = _db
-        .collection(AppConstants.colDailyQuestions)
-        .doc(round.id);
-    await _db.runTransaction((tx) async {
-      final snap = await tx.get(roundRef);
-      final data = snap.data();
-      if (data == null) return;
+    final optimisticAnswers = Map<String, String>.from(round.answers);
+    optimisticAnswers[userId] = normalized;
+    final optimisticRevealAt =
+        optimisticAnswers.length >= 2 && round.revealedAt == null
+            ? DateTime.now()
+            : round.revealedAt;
+    state = state.copyWith(
+      dailyQuestion: DailyQuestionModel(
+        id: round.id,
+        coupleId: round.coupleId,
+        dayKey: round.dayKey,
+        question: round.question,
+        answers: optimisticAnswers,
+        createdAt: round.createdAt,
+        revealedAt: optimisticRevealAt,
+      ),
+    );
 
-      final current = DailyQuestionModel.fromMap(snap.id, data);
-      final answers = Map<String, String>.from(current.answers);
-      answers[userId] = normalized;
-
-      final updates = <String, dynamic>{'answers': answers};
-      if (answers.length >= 2 && current.revealedAt == null) {
-        updates['revealedAt'] = DateTime.now().millisecondsSinceEpoch;
-      }
-      tx.update(roundRef, updates);
-    });
+    await _executeOrQueue(
+      type: 'submitDailyAnswer',
+      payload: {'roundId': round.id, 'userId': userId, 'answer': normalized},
+      onlineTask:
+          () => _persistDailyAnswer(
+            roundId: round.id,
+            userId: userId,
+            answer: normalized,
+          ),
+    );
   }
 
   /// Creates a new time capsule that unlocks in the future.
@@ -660,11 +855,24 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       unlockAt: unlockAt,
       openedByUserIds: const <String>[],
     );
+    state = state.copyWith(
+      capsules: [...state.capsules, capsule]
+        ..sort((a, b) => a.unlockAt.compareTo(b.unlockAt)),
+    );
 
-    await _db
-        .collection(AppConstants.colCapsules)
-        .doc(capsule.id)
-        .set(capsule.toMap());
+    await _executeOrQueue(
+      type: 'createTimeCapsule',
+      payload: {
+        'id': capsule.id,
+        'coupleId': capsule.coupleId,
+        'title': capsule.title,
+        'message': capsule.message,
+        'createdByUserId': capsule.createdByUserId,
+        'createdAt': capsule.createdAt.millisecondsSinceEpoch,
+        'unlockAt': capsule.unlockAt.millisecondsSinceEpoch,
+      },
+      onlineTask: () => _persistCapsule(capsule),
+    );
   }
 
   /// Opens a time capsule for the current user and returns its content.
@@ -682,7 +890,217 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     return capsule;
   }
 
-  /// Marks the incoming wish as seen — removes the shooting star overlay.
+  Future<void> _persistEmotion(String mood) async {
+    final couple = state.couple;
+    if (couple == null) return;
+    final emotion = EmotionModel.create(mood: mood);
+    final emotionField = _isUser1 ? 'user1Emotion' : 'user2Emotion';
+    await _db.collection('couples').doc(couple.id).update({
+      emotionField: emotion.toMap(),
+      'connectionStrength': couple.connectionStrength,
+    });
+    await _tryIncrementStreak();
+  }
+
+  Future<void> _persistMemory(MemoryModel memory) async {
+    await _db.collection('memories').doc(memory.id).set(memory.toMap());
+    await _db.collection('couples').doc(memory.coupleId).update({
+      'connectionStrength': FieldValue.increment(AppConstants.pointsAddMemory),
+    });
+  }
+
+  Future<void> _persistGoal(GoalModel goal) async {
+    await _db.collection('goals').doc(goal.id).set(goal.toMap());
+  }
+
+  Future<void> _persistGoalProgress({
+    required String goalId,
+    required String coupleId,
+    required double progress,
+  }) async {
+    final clamped = progress.clamp(0.0, 1.0);
+    GoalModel? existing;
+    for (final goal in state.goals) {
+      if (goal.id == goalId) {
+        existing = goal;
+        break;
+      }
+    }
+    final isNowCompleted =
+        existing != null && clamped >= 1.0 && !existing.isCompleted;
+
+    final data = <String, dynamic>{'progress': clamped};
+    if (isNowCompleted) {
+      data['completedAt'] = DateTime.now().millisecondsSinceEpoch;
+    }
+    await _db.collection('goals').doc(goalId).update(data);
+    if (isNowCompleted) {
+      await _db.collection('couples').doc(coupleId).update({
+        'connectionStrength': FieldValue.increment(
+          AppConstants.pointsGoalComplete,
+        ),
+      });
+    }
+  }
+
+  Future<void> _persistWish({
+    required String id,
+    required String coupleId,
+    required String userId,
+    required String message,
+    required int createdAtMs,
+  }) async {
+    await _db.collection('wishes').doc(id).set({
+      'id': id,
+      'coupleId': coupleId,
+      'message': message,
+      'fromUserId': userId,
+      'createdAt': createdAtMs,
+      'seen': false,
+    });
+  }
+
+  Future<void> _persistCapsule(TimeCapsuleModel capsule) async {
+    await _db
+        .collection(AppConstants.colCapsules)
+        .doc(capsule.id)
+        .set(capsule.toMap());
+  }
+
+  Future<void> _persistDailyAnswer({
+    required String roundId,
+    required String userId,
+    required String answer,
+  }) async {
+    final roundRef = _db
+        .collection(AppConstants.colDailyQuestions)
+        .doc(roundId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(roundRef);
+      final data = snap.data();
+      if (data == null) return;
+
+      final current = DailyQuestionModel.fromMap(snap.id, data);
+      final answers = Map<String, String>.from(current.answers);
+      answers[userId] = answer;
+
+      final updates = <String, dynamic>{'answers': answers};
+      if (answers.length >= 2 && current.revealedAt == null) {
+        updates['revealedAt'] = DateTime.now().millisecondsSinceEpoch;
+      }
+      tx.update(roundRef, updates);
+    });
+  }
+
+  Future<void> _persistMemoryFromPayload(Map<String, dynamic> payload) async {
+    final memory = MemoryModel(
+      id: payload['id'] as String? ?? const Uuid().v4(),
+      coupleId: payload['coupleId'] as String? ?? '',
+      type: payload['type'] as String? ?? 'constellation',
+      title: payload['title'] as String? ?? '',
+      description: payload['description'] as String? ?? '',
+      createdByUserId: payload['createdByUserId'] as String?,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        payload['createdAt'] as int? ?? 0,
+      ),
+      posX: (payload['posX'] as num?)?.toDouble() ?? 0.5,
+      posY: (payload['posY'] as num?)?.toDouble() ?? 0.5,
+    );
+    if (memory.coupleId.isEmpty) return;
+    await _persistMemory(memory);
+  }
+
+  Future<void> _persistGoalFromPayload(Map<String, dynamic> payload) async {
+    final goal = GoalModel(
+      id: payload['id'] as String? ?? const Uuid().v4(),
+      coupleId: payload['coupleId'] as String? ?? '',
+      title: payload['title'] as String? ?? '',
+      description: payload['description'] as String? ?? '',
+      targetDate: DateTime.fromMillisecondsSinceEpoch(
+        payload['targetDate'] as int? ?? 0,
+      ),
+      progress: (payload['progress'] as num?)?.toDouble() ?? 0.0,
+      symbol: payload['symbol'] as String? ?? 'lighthouse',
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        payload['createdAt'] as int? ?? 0,
+      ),
+    );
+    if (goal.coupleId.isEmpty) return;
+    await _persistGoal(goal);
+  }
+
+  Future<void> _persistGoalProgressFromPayload(
+    Map<String, dynamic> payload,
+  ) async {
+    final goalId = payload['goalId'] as String? ?? '';
+    final coupleId = payload['coupleId'] as String? ?? '';
+    final progress = (payload['progress'] as num?)?.toDouble() ?? 0.0;
+    if (goalId.isEmpty || coupleId.isEmpty) return;
+    await _persistGoalProgress(
+      goalId: goalId,
+      coupleId: coupleId,
+      progress: progress,
+    );
+  }
+
+  Future<void> _persistWishFromPayload(Map<String, dynamic> payload) async {
+    final id = payload['id'] as String? ?? '';
+    final coupleId = payload['coupleId'] as String? ?? '';
+    final userId = payload['fromUserId'] as String? ?? '';
+    final message = payload['message'] as String? ?? '';
+    final createdAtMs = payload['createdAt'] as int? ?? 0;
+    if (id.isEmpty || coupleId.isEmpty || userId.isEmpty || message.isEmpty) {
+      return;
+    }
+    await _persistWish(
+      id: id,
+      coupleId: coupleId,
+      userId: userId,
+      message: message,
+      createdAtMs: createdAtMs,
+    );
+  }
+
+  Future<void> _persistCapsuleFromPayload(Map<String, dynamic> payload) async {
+    final capsule = TimeCapsuleModel(
+      id: payload['id'] as String? ?? const Uuid().v4(),
+      coupleId: payload['coupleId'] as String? ?? '',
+      title: payload['title'] as String? ?? '',
+      message: payload['message'] as String? ?? '',
+      createdByUserId: payload['createdByUserId'] as String? ?? '',
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        payload['createdAt'] as int? ?? 0,
+      ),
+      unlockAt: DateTime.fromMillisecondsSinceEpoch(
+        payload['unlockAt'] as int? ?? 0,
+      ),
+      openedByUserIds: const <String>[],
+    );
+    if (capsule.coupleId.isEmpty || capsule.createdByUserId.isEmpty) return;
+    await _persistCapsule(capsule);
+  }
+
+  Future<void> _persistDailyAnswerFromPayload(
+    Map<String, dynamic> payload,
+  ) async {
+    final roundId = payload['roundId'] as String? ?? '';
+    final userId = payload['userId'] as String? ?? '';
+    final answer = payload['answer'] as String? ?? '';
+    if (roundId.isEmpty || userId.isEmpty || answer.isEmpty) return;
+    await _persistDailyAnswer(roundId: roundId, userId: userId, answer: answer);
+  }
+
+  Future<void> _persistPulseFromPayload(Map<String, dynamic> payload) async {
+    final coupleId = payload['coupleId'] as String? ?? '';
+    final userId = payload['userId'] as String? ?? '';
+    if (coupleId.isEmpty || userId.isEmpty) return;
+    await _rtdb.ref('presence/$coupleId/pulse').set({
+      'from': userId,
+      'at': ServerValue.timestamp,
+    });
+  }
+
+  /// Marks the incoming wish as seen â€” removes the shooting star overlay.
   Future<void> markWishSeen() async {
     final wish = state.incomingWish;
     if (wish == null) return;
@@ -745,7 +1163,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     }
   }
 
-  // ── Fallback mock data ─────────────────────────────────────────────────────
+  // â”€â”€ Fallback mock data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void _fallbackToMockOrEmpty() {
     if (kDebugMode) {
@@ -803,7 +1221,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         GoalModel(
           id: uuid.v4(),
           coupleId: 'couple_demo',
-          title: 'Encontrarnos en París',
+          title: 'Encontrarnos en ParÃ­s',
           description: 'Nuestro primer reencuentro.',
           targetDate: DateTime(2025, 12, 1),
           progress: 0.6,
@@ -828,7 +1246,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         dayKey: dayKey(DateTime.now()),
         question: _preguntaParaDia(dayKey(DateTime.now())),
         answers: const <String, String>{
-          'user1': 'Hoy me acordé de ti cuando vi el atardecer.',
+          'user1': 'Hoy me acordÃ© de ti cuando vi el atardecer.',
         },
         createdAt: DateTime.now(),
       ),
@@ -849,6 +1267,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     _capsulesSub?.cancel();
     _dailyQuestionSub?.cancel();
     _wishesSub?.cancel();
+    _syncConnectionSub?.cancel();
     _partnerOnlineSub?.cancel();
     _pulseSub?.cancel();
     _pulseTimer?.cancel();
