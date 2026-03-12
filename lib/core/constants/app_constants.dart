@@ -33,6 +33,7 @@ abstract class AppConstants {
   static const String colCouples = 'couples';
   static const String colMemories = 'memories';
   static const String colGoals = 'goals';
+  static const String colCapsules = 'capsules';
   static const String colRituals = 'rituals';
 
   // Presence (Realtime DB)

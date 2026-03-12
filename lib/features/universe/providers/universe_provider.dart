@@ -10,6 +10,7 @@ import 'package:aethera/shared/models/couple_model.dart';
 import 'package:aethera/shared/models/emotion_model.dart';
 import 'package:aethera/shared/models/memory_model.dart';
 import 'package:aethera/shared/models/goal_model.dart';
+import 'package:aethera/shared/models/time_capsule_model.dart';
 import 'package:aethera/shared/models/wish_model.dart';
 import 'package:aethera/core/constants/app_constants.dart';
 import 'package:aethera/core/services/presence_service.dart';
@@ -22,6 +23,8 @@ class UniverseAppState {
   final CoupleModel? couple;
   final List<MemoryModel> memories;
   final List<GoalModel> goals;
+  final List<TimeCapsuleModel> capsules;
+  final String? currentUserId;
   final bool partnerOnline;
   final bool receivedPulse;
   final bool newMemoryFromPartner;
@@ -42,6 +45,8 @@ class UniverseAppState {
     this.couple,
     this.memories = const [],
     this.goals = const [],
+    this.capsules = const [],
+    this.currentUserId,
     this.partnerOnline = false,
     this.receivedPulse = false,
     this.newMemoryFromPartner = false,
@@ -63,6 +68,9 @@ class UniverseAppState {
     CoupleModel? couple,
     List<MemoryModel>? memories,
     List<GoalModel>? goals,
+    List<TimeCapsuleModel>? capsules,
+    String? currentUserId,
+    bool clearCurrentUserId = false,
     bool? partnerOnline,
     bool? receivedPulse,
     bool? newMemoryFromPartner,
@@ -79,6 +87,9 @@ class UniverseAppState {
     couple: couple ?? this.couple,
     memories: memories ?? this.memories,
     goals: goals ?? this.goals,
+    capsules: capsules ?? this.capsules,
+    currentUserId:
+        clearCurrentUserId ? null : (currentUserId ?? this.currentUserId),
     partnerOnline: partnerOnline ?? this.partnerOnline,
     receivedPulse: receivedPulse ?? this.receivedPulse,
     newMemoryFromPartner: newMemoryFromPartner ?? this.newMemoryFromPartner,
@@ -116,6 +127,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _coupleSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _memoriesSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _goalsSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _capsulesSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _wishesSub;
   StreamSubscription<bool>? _partnerOnlineSub;
   StreamSubscription<bool>? _pulseSub;
@@ -160,6 +172,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       state = state.copyWith(
         couple: CoupleModel.fromMap(coupleSnap.id, initialCoupleData),
         streakDays: initialCoupleData['streakDays'] as int? ?? 0,
+        currentUserId: user.uid,
         isLoading: false,
       );
 
@@ -250,6 +263,20 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
                       .map((d) => GoalModel.fromMap(d.id, d.data()))
                       .toList(),
             );
+          });
+
+      // Real-time time capsules stream
+      _capsulesSub = _db
+          .collection(AppConstants.colCapsules)
+          .where('coupleId', isEqualTo: coupleId)
+          .snapshots()
+          .listen((snap) {
+            final capsules =
+                snap.docs
+                    .map((d) => TimeCapsuleModel.fromMap(d.id, d.data()))
+                    .toList()
+                  ..sort((a, b) => a.unlockAt.compareTo(b.unlockAt));
+            state = state.copyWith(capsules: capsules);
           });
 
       // Track IDs for wish system
@@ -455,12 +482,14 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       _coupleSub?.cancel();
       _memoriesSub?.cancel();
       _goalsSub?.cancel();
+      _capsulesSub?.cancel();
       _wishesSub?.cancel();
       _partnerOnlineSub?.cancel();
       _pulseSub?.cancel();
       _coupleSub = null;
       _memoriesSub = null;
       _goalsSub = null;
+      _capsulesSub = null;
       _wishesSub = null;
       _partnerOnlineSub = null;
       _pulseSub = null;
@@ -486,6 +515,50 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       'createdAt': DateTime.now().millisecondsSinceEpoch,
       'seen': false,
     });
+  }
+
+  /// Creates a new time capsule that unlocks in the future.
+  Future<void> createTimeCapsule({
+    required String message,
+    required DateTime unlockAt,
+    String title = '',
+  }) async {
+    final coupleId = _coupleId ?? state.couple?.id;
+    final userId = _myUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    final trimmedMessage = message.trim();
+    if (coupleId == null || userId == null || trimmedMessage.isEmpty) return;
+    if (!unlockAt.isAfter(DateTime.now())) return;
+
+    final capsule = TimeCapsuleModel(
+      id: const Uuid().v4(),
+      coupleId: coupleId,
+      title: title.trim(),
+      message: trimmedMessage,
+      createdByUserId: userId,
+      createdAt: DateTime.now(),
+      unlockAt: unlockAt,
+      openedByUserIds: const <String>[],
+    );
+
+    await _db
+        .collection(AppConstants.colCapsules)
+        .doc(capsule.id)
+        .set(capsule.toMap());
+  }
+
+  /// Opens a time capsule for the current user and returns its content.
+  Future<TimeCapsuleModel?> openTimeCapsule(String capsuleId) async {
+    final userId = _myUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null || capsuleId.isEmpty) return null;
+
+    final capsule = _capsuleById(capsuleId);
+    if (capsule == null || !capsule.isUnlocked) return null;
+    if (!capsule.isOpenedBy(userId)) {
+      await _db.collection(AppConstants.colCapsules).doc(capsuleId).update({
+        'openedByUserIds': FieldValue.arrayUnion(<String>[userId]),
+      });
+    }
+    return capsule;
   }
 
   /// Marks the incoming wish as seen — removes the shooting star overlay.
@@ -565,6 +638,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     const uuid = Uuid();
     state = UniverseAppState(
       isLoading: false,
+      currentUserId: 'user1',
       couple: CoupleModel(
         id: 'couple_demo',
         user1Id: 'user1',
@@ -616,13 +690,32 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
           createdAt: DateTime(2024, 6, 1),
         ),
       ],
+      capsules: [
+        TimeCapsuleModel(
+          id: uuid.v4(),
+          coupleId: 'couple_demo',
+          title: 'Para abrir en una semana',
+          message: 'Si leemos esto, seguimos eligiendonos cada dia.',
+          createdByUserId: 'user2',
+          createdAt: DateTime(2024, 7, 10),
+          unlockAt: DateTime.now().add(const Duration(days: 7)),
+        ),
+      ],
     );
+  }
+
+  TimeCapsuleModel? _capsuleById(String capsuleId) {
+    for (final capsule in state.capsules) {
+      if (capsule.id == capsuleId) return capsule;
+    }
+    return null;
   }
 
   void _disposeResources() {
     _coupleSub?.cancel();
     _memoriesSub?.cancel();
     _goalsSub?.cancel();
+    _capsulesSub?.cancel();
     _wishesSub?.cancel();
     _partnerOnlineSub?.cancel();
     _pulseSub?.cancel();
