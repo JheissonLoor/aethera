@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:aethera/l10n/gen/app_localizations.dart';
 import 'package:aethera/core/router/app_router.dart';
 import 'package:aethera/core/services/music_service.dart';
 import 'package:aethera/core/services/notification_service.dart';
