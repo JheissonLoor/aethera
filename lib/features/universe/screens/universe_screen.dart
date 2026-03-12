@@ -355,6 +355,10 @@ class _TopBar extends ConsumerWidget {
                   _StreakBadge(days: state.streakDays),
                 ],
                 const Spacer(),
+                if (!state.isSyncConnected || state.pendingSyncActions > 0) ...[
+                  _SyncStatusBadge(state: state),
+                  const SizedBox(width: 8),
+                ],
                 _MusicToggleButton(),
                 const SizedBox(width: 8),
                 GestureDetector(
@@ -431,6 +435,41 @@ class _TopBar extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SyncStatusBadge extends StatelessWidget {
+  final UniverseAppState state;
+
+  const _SyncStatusBadge({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final offline = !state.isSyncConnected;
+    final queued = state.pendingSyncActions;
+    final color = offline ? AetheraTokens.roseQuartz : AetheraTokens.auroraTeal;
+    final icon = offline ? Icons.cloud_off_rounded : Icons.sync_rounded;
+    final label =
+        offline
+            ? (queued > 0 ? 'Sin conexion ($queued)' : 'Sin conexion')
+            : 'Sincronizando $queued';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(label, style: AetheraTokens.labelSmall(color: color)),
+        ],
       ),
     );
   }
