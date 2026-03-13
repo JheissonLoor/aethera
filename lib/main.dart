@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:aethera/core/router/app_router.dart';
+import 'package:aethera/core/constants/telemetry_events.dart';
 import 'package:aethera/core/services/crashlytics_service.dart';
 import 'package:aethera/core/services/music_service.dart';
 import 'package:aethera/core/services/notification_service.dart';
@@ -51,6 +52,7 @@ class _BootstrapGateAppState extends State<_BootstrapGateApp> {
   bool _isReady = false;
   bool _isLoading = true;
   bool _didTimeout = false;
+  int _bootstrapAttempts = 0;
 
   @override
   void initState() {
@@ -60,6 +62,8 @@ class _BootstrapGateAppState extends State<_BootstrapGateApp> {
 
   Future<void> _bootstrap() async {
     if (!mounted) return;
+    _bootstrapAttempts += 1;
+    final attempt = _bootstrapAttempts;
     setState(() {
       _isLoading = true;
       _didTimeout = false;
@@ -79,8 +83,14 @@ class _BootstrapGateAppState extends State<_BootstrapGateApp> {
     if (!firebaseOk) {
       unawaited(
         AppTelemetryService.instance.logEvent(
-          'startup_failed',
-          parameters: {'timeout': timedOut},
+          TelemetryEvents.startupFailed,
+          parameters: {'timeout': timedOut, 'attempt': attempt},
+        ),
+      );
+      unawaited(
+        AppTelemetryService.instance.logEvent(
+          TelemetryEvents.kpiStartupFailure,
+          parameters: {'timeout': timedOut, 'attempt': attempt},
         ),
       );
       setState(() {
@@ -98,7 +108,20 @@ class _BootstrapGateAppState extends State<_BootstrapGateApp> {
     }
 
     await AppTelemetryService.instance.initialize(enabled: !kIsWeb);
-    unawaited(AppTelemetryService.instance.logEvent('startup_ready'));
+    unawaited(
+      AppTelemetryService.instance.logEvent(
+        TelemetryEvents.startupReady,
+        parameters: {'attempt': attempt},
+      ),
+    );
+    if (attempt > 1) {
+      unawaited(
+        AppTelemetryService.instance.logEvent(
+          TelemetryEvents.startupRecovered,
+          parameters: {'attempt': attempt},
+        ),
+      );
+    }
 
     unawaited(_initializeOptionalServices());
 
@@ -119,6 +142,7 @@ class _BootstrapGateAppState extends State<_BootstrapGateApp> {
     return _BootstrapRecoveryApp(
       isLoading: _isLoading,
       didTimeout: _didTimeout,
+      bootstrapAttempts: _bootstrapAttempts,
       onRetry: _bootstrap,
     );
   }
@@ -214,11 +238,13 @@ Future<void> _initializeOptionalServices() async {
 class _BootstrapRecoveryApp extends StatelessWidget {
   final bool isLoading;
   final bool didTimeout;
+  final int bootstrapAttempts;
   final Future<void> Function() onRetry;
 
   const _BootstrapRecoveryApp({
     required this.isLoading,
     required this.didTimeout,
+    required this.bootstrapAttempts,
     required this.onRetry,
   });
 
@@ -293,7 +319,18 @@ class _BootstrapRecoveryApp extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                     ElevatedButton(
-                      onPressed: () => unawaited(onRetry()),
+                      onPressed: () {
+                        unawaited(
+                          AppTelemetryService.instance.logEvent(
+                            TelemetryEvents.startupRetryTapped,
+                            parameters: {
+                              'timeout': didTimeout,
+                              'attempt': bootstrapAttempts,
+                            },
+                          ),
+                        );
+                        unawaited(onRetry());
+                      },
                       child: Text(l10n?.startupRetryButton ?? 'Reintentar'),
                     ),
                   ],

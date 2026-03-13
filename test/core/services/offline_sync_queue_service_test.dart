@@ -76,5 +76,42 @@ void main() {
       expect(await service.load(), isEmpty);
       expect(await service.count(), 0);
     });
+
+    test('cuando la cola supera el limite elimina las mas antiguas', () async {
+      final bounded = OfflineSyncQueueService(maxQueueSize: 2);
+
+      final r1 = await bounded.enqueue(
+        const OfflineSyncAction(
+          id: 'a1',
+          type: 'updateEmotion',
+          payload: {'mood': 'love'},
+          createdAtMs: 1,
+        ),
+      );
+      final r2 = await bounded.enqueue(
+        const OfflineSyncAction(
+          id: 'a2',
+          type: 'sendWish',
+          payload: {'message': 'hola'},
+          createdAtMs: 2,
+        ),
+      );
+      final r3 = await bounded.enqueue(
+        const OfflineSyncAction(
+          id: 'a3',
+          type: 'sendPulse',
+          payload: {'ok': true},
+          createdAtMs: 3,
+        ),
+      );
+
+      expect(r1.droppedCount, 0);
+      expect(r2.droppedCount, 0);
+      expect(r3.droppedCount, 1);
+      expect(r3.queueSize, 2);
+
+      final actions = await bounded.load();
+      expect(actions.map((e) => e.id), <String>['a2', 'a3']);
+    });
   });
 }

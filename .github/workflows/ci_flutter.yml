@@ -11,9 +11,11 @@ on:
       - master
 
 jobs:
-  calidad:
-    name: Analyze y Test
+  calidad_release:
+    name: Calidad y Release
     runs-on: ubuntu-latest
+    env:
+      MIN_COVERAGE: "15"
 
     steps:
       - name: Checkout
@@ -31,8 +33,30 @@ jobs:
       - name: Generar localizaciones
         run: flutter gen-l10n
 
+      - name: Check encoding y mojibake
+        run: dart run tool/check_mojibake.dart
+
       - name: Analisis estatico
         run: flutter analyze
 
-      - name: Tests
-        run: flutter test
+      - name: Tests unit y widget con cobertura
+        run: flutter test --coverage test/core test/features test/shared test/widget_test.dart
+
+      - name: Cobertura minima
+        run: >
+          dart run tool/check_lcov_min.dart
+          --min=$MIN_COVERAGE
+          --include=lib/core/services,lib/core/utils,lib/shared/models,lib/shared/widgets,lib/features/universe/domain
+
+      - name: Tests E2E criticos
+        run: flutter test test/e2e
+
+      - name: Build Android App Bundle (release)
+        run: flutter build appbundle --release
+
+      - name: Subir artefacto AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error

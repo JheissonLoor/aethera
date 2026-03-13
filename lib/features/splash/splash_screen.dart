@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aethera/core/theme/aethera_tokens.dart';
 import 'package:aethera/core/router/app_router.dart';
+import 'package:aethera/l10n/l10n_ext.dart';
 
 /// Full cinematic splash screen — 3.5 seconds animated sequence.
 ///
@@ -44,18 +45,30 @@ class _SplashScreenState extends State<SplashScreen>
     _ctrl = AnimationController(vsync: this, duration: _total);
 
     // Helpers
-    Animation<double> interval(double start, double end, {Curve curve = Curves.easeInOut}) =>
-        CurvedAnimation(parent: _ctrl, curve: Interval(start, end, curve: curve));
+    Animation<double> interval(
+      double start,
+      double end, {
+      Curve curve = Curves.easeInOut,
+    }) => CurvedAnimation(
+      parent: _ctrl,
+      curve: Interval(start, end, curve: curve),
+    );
 
     _bgFade = interval(0.0, 0.17);
     _starsFade = interval(0.06, 0.42);
     _orbitalProgress = interval(0.22, 0.50, curve: Curves.easeInOutCubic);
     _titleFade = interval(0.33, 0.61);
-    _titleScale = Tween(begin: 0.85, end: 1.0).animate(interval(0.33, 0.61, curve: Curves.easeOutBack));
+    _titleScale = Tween(
+      begin: 0.85,
+      end: 1.0,
+    ).animate(interval(0.33, 0.61, curve: Curves.easeOutBack));
     _titleSpacing = Tween(begin: 2.0, end: 8.0).animate(interval(0.33, 0.67));
     _subtitleFade = interval(0.50, 0.78);
     _glowPulse = Tween(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: const Interval(0.78, 0.89, curve: Curves.easeInOut)),
+      CurvedAnimation(
+        parent: _ctrl,
+        curve: const Interval(0.78, 0.89, curve: Curves.easeInOut),
+      ),
     );
     _exitFade = Tween(begin: 1.0, end: 0.0).animate(interval(0.89, 1.0));
 
@@ -124,12 +137,16 @@ class _SplashScreenState extends State<SplashScreen>
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: AetheraTokens.auroraTeal.withValues(alpha: 0.4),
+                            color: AetheraTokens.auroraTeal.withValues(
+                              alpha: 0.4,
+                            ),
                             blurRadius: 60,
                             spreadRadius: 20,
                           ),
                           BoxShadow(
-                            color: AetheraTokens.roseQuartz.withValues(alpha: 0.3),
+                            color: AetheraTokens.roseQuartz.withValues(
+                              alpha: 0.3,
+                            ),
                             blurRadius: 80,
                             spreadRadius: 10,
                           ),
@@ -153,16 +170,17 @@ class _SplashScreenState extends State<SplashScreen>
                             'AETHERA',
                             style: AetheraTokens.displayLarge().copyWith(
                               letterSpacing: _titleSpacing.value,
-                              foreground: Paint()
-                                ..shader = const LinearGradient(
-                                  colors: [
-                                    AetheraTokens.auroraTeal,
-                                    AetheraTokens.starlight,
-                                    AetheraTokens.nebulaPurple,
-                                  ],
-                                ).createShader(
-                                  const Rect.fromLTWH(0, 0, 300, 80),
-                                ),
+                              foreground:
+                                  Paint()
+                                    ..shader = const LinearGradient(
+                                      colors: [
+                                        AetheraTokens.auroraTeal,
+                                        AetheraTokens.starlight,
+                                        AetheraTokens.nebulaPurple,
+                                      ],
+                                    ).createShader(
+                                      const Rect.fromLTWH(0, 0, 300, 80),
+                                    ),
                             ),
                           ),
                         ),
@@ -172,7 +190,10 @@ class _SplashScreenState extends State<SplashScreen>
                       FadeTransition(
                         opacity: _subtitleFade,
                         child: Text(
-                          'tu universo, juntos',
+                          context.tr(
+                            'tu universo, juntos',
+                            'your universe, together',
+                          ),
                           style: AetheraTokens.bodyMedium(
                             color: AetheraTokens.moonGlow,
                           ).copyWith(letterSpacing: 2.5),
@@ -239,28 +260,40 @@ class _OrbitalParticles extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final cx = constraints.maxWidth / 2;
-      final cy = constraints.maxHeight / 2;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cx = constraints.maxWidth / 2;
+        final cy = constraints.maxHeight / 2;
 
-      // Start positions (top-left and bottom-right quadrants)
-      final startOffset1 = Offset(cx * 0.2, cy * 0.3);
-      final startOffset2 = Offset(cx * 1.8, cy * 1.7);
-      final end = Offset(cx, cy);
+        // Start positions (top-left and bottom-right quadrants)
+        final startOffset1 = Offset(cx * 0.2, cy * 0.3);
+        final startOffset2 = Offset(cx * 1.8, cy * 1.7);
+        final end = Offset(cx, cy);
 
-      final pos1 = Offset.lerp(startOffset1, end, Curves.easeInOutCubic.transform(progress))!;
-      final pos2 = Offset.lerp(startOffset2, end, Curves.easeInOutCubic.transform(progress))!;
-      final alpha = (1.0 - progress * 0.3).clamp(0.0, 1.0);
+        final pos1 =
+            Offset.lerp(
+              startOffset1,
+              end,
+              Curves.easeInOutCubic.transform(progress),
+            )!;
+        final pos2 =
+            Offset.lerp(
+              startOffset2,
+              end,
+              Curves.easeInOutCubic.transform(progress),
+            )!;
+        final alpha = (1.0 - progress * 0.3).clamp(0.0, 1.0);
 
-      return CustomPaint(
-        painter: _OrbitalPainter(
-          pos1: pos1,
-          pos2: pos2,
-          alpha: alpha,
-          progress: progress,
-        ),
-      );
-    });
+        return CustomPaint(
+          painter: _OrbitalPainter(
+            pos1: pos1,
+            pos2: pos2,
+            alpha: alpha,
+            progress: progress,
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -300,19 +333,22 @@ class _OrbitalPainter extends CustomPainter {
       Paint()..color = color.withValues(alpha: 0.12 * alpha),
     );
     // Core
-    canvas.drawCircle(
-      pos,
-      5,
-      Paint()..color = color.withValues(alpha: alpha),
-    );
+    canvas.drawCircle(pos, 5, Paint()..color = color.withValues(alpha: alpha));
   }
 
-  void _drawTrail(Canvas canvas, Offset pos, Size size, Color color, double alpha) {
+  void _drawTrail(
+    Canvas canvas,
+    Offset pos,
+    Size size,
+    Color color,
+    double alpha,
+  ) {
     final center = Offset(size.width / 2, size.height / 2);
-    final paint = Paint()
-      ..color = color.withValues(alpha: alpha)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
+    final paint =
+        Paint()
+          ..color = color.withValues(alpha: alpha)
+          ..strokeWidth = 1
+          ..style = PaintingStyle.stroke;
     canvas.drawLine(pos, center, paint);
   }
 

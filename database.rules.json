@@ -1,0 +1,27 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "presence": {
+      "$coupleId": {
+        ".read": "auth != null",
+        "user1Online": {
+          ".write": "auth != null",
+          ".validate": "newData.isBoolean()"
+        },
+        "user2Online": {
+          ".write": "auth != null",
+          ".validate": "newData.isBoolean()"
+        },
+        "pulse": {
+          ".write": "auth != null",
+          ".validate": "newData.hasChildren(['from','at']) && newData.child('from').isString() && newData.child('from').val() == auth.uid && newData.child('at').isNumber()"
+        },
+        "$other": {
+          ".read": false,
+          ".write": false
+        }
+      }
+    }
+  }
+}

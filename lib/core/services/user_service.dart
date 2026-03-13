@@ -2,9 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:aethera/shared/models/user_model.dart';
 
 class UserService {
-  final _db = FirebaseFirestore.instance;
+  UserService({FirebaseFirestore? firestore}) : _db = firestore;
 
-  CollectionReference<Map<String, dynamic>> get _col => _db.collection('users');
+  final FirebaseFirestore? _db;
+  FirebaseFirestore get _firestore => _db ?? FirebaseFirestore.instance;
+  CollectionReference<Map<String, dynamic>> get _col =>
+      _firestore.collection('users');
 
   Future<void> createUser(UserModel user) =>
       _col.doc(user.uid).set(user.toMap());

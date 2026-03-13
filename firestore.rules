@@ -1,0 +1,275 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function esMiUsuario(uid) {
+      return autenticado() && request.auth.uid == uid;
+    }
+
+    function docUsuario() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function tieneDocUsuario() {
+      return autenticado() && docUsuario().data != null;
+    }
+
+    function miCoupleId() {
+      return (
+        tieneDocUsuario()
+        && ('coupleId' in docUsuario().data)
+        && docUsuario().data.coupleId is string
+      )
+        ? docUsuario().data.coupleId
+        : '';
+    }
+
+    function esMiPareja(coupleId) {
+      return autenticado() && coupleId is string && coupleId.size() > 0 && miCoupleId() == coupleId;
+    }
+
+    function parejaExisteYMePertenece(coupleId) {
+      return (
+        coupleId is string
+        && coupleId.size() > 0
+        && exists(/databases/$(database)/documents/couples/$(coupleId))
+        && (
+          get(/databases/$(database)/documents/couples/$(coupleId)).data.user1Id == request.auth.uid
+          || get(/databases/$(database)/documents/couples/$(coupleId)).data.user2Id == request.auth.uid
+        )
+      );
+    }
+
+    match /users/{uid} {
+      allow read: if esMiUsuario(uid);
+
+      allow create: if esMiUsuario(uid)
+        && request.resource.data.keys().hasOnly([
+          'email',
+          'displayName',
+          'coupleId',
+          'createdAt',
+          'lastSeen',
+          'fcmToken'
+        ])
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string
+        && request.resource.data.createdAt is int
+        && (!('coupleId' in request.resource.data) || request.resource.data.coupleId is string)
+        && (!('lastSeen' in request.resource.data) || request.resource.data.lastSeen is int);
+
+      allow update: if esMiUsuario(uid)
+        && request.resource.data.keys().hasOnly([
+          'email',
+          'displayName',
+          'coupleId',
+          'createdAt',
+          'lastSeen',
+          'fcmToken'
+        ])
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string
+        && request.resource.data.createdAt is int
+        && (!('lastSeen' in request.resource.data) || request.resource.data.lastSeen is int)
+        && (
+          !('coupleId' in request.resource.data) ||
+          (
+            ('coupleId' in resource.data)
+            && request.resource.data.coupleId == resource.data.coupleId
+          ) ||
+          (
+            parejaExisteYMePertenece(request.resource.data.coupleId)
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    match /couples/{coupleId} {
+      allow get: if autenticado() && (
+        esMiPareja(coupleId)
+        ||
+        (
+          resource.data != null
+          && ('user2Id' in resource.data)
+          && resource.data.user2Id == ''
+        )
+      );
+
+      allow list: if autenticado()
+        && request.query.limit != null
+        && request.query.limit <= 1;
+
+      allow create: if autenticado()
+        && request.resource.data.user1Id == request.auth.uid
+        && request.resource.data.user2Id == ''
+        && request.resource.data.inviteCode is string
+        && request.resource.data.inviteCode.size() == 6
+        && request.resource.data.createdAt is int
+        && request.resource.data.connectionStrength is int
+        && request.resource.data.universeState is map;
+
+      allow update: if autenticado() && (
+        (
+          (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id)
+          && request.resource.data.user1Id == resource.data.user1Id
+          && request.resource.data.user2Id == resource.data.user2Id
+          && request.resource.data.inviteCode == resource.data.inviteCode
+          && request.resource.data.createdAt == resource.data.createdAt
+        )
+        ||
+        (
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['user2Id'])
+          && resource.data.user2Id == ''
+          && request.resource.data.user2Id == request.auth.uid
+          && request.auth.uid != resource.data.user1Id
+        )
+      );
+
+      allow delete: if false;
+    }
+
+    match /memories/{memoryId} {
+      allow read: if esMiPareja(resource.data.coupleId);
+
+      allow create: if esMiPareja(request.resource.data.coupleId)
+        && request.resource.data.title is string
+        && request.resource.data.description is string
+        && request.resource.data.createdAt is int
+        && request.resource.data.posX is number
+        && request.resource.data.posY is number
+        && (
+          !('createdByUserId' in request.resource.data) ||
+          request.resource.data.createdByUserId == request.auth.uid ||
+          request.resource.data.createdByUserId == 'system'
+        );
+
+      allow update, delete: if false;
+    }
+
+    match /goals/{goalId} {
+      allow read: if esMiPareja(resource.data.coupleId);
+
+      allow create: if esMiPareja(request.resource.data.coupleId)
+        && request.resource.data.title is string
+        && request.resource.data.description is string
+        && request.resource.data.targetDate is int
+        && request.resource.data.progress is number
+        && request.resource.data.progress >= 0
+        && request.resource.data.progress <= 1
+        && request.resource.data.createdAt is int;
+
+      allow update: if esMiPareja(resource.data.coupleId)
+        && request.resource.data.coupleId == resource.data.coupleId
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.description == resource.data.description
+        && request.resource.data.targetDate == resource.data.targetDate
+        && request.resource.data.symbol == resource.data.symbol
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.progress is number
+        && request.resource.data.progress >= 0
+        && request.resource.data.progress <= 1
+        && (
+          !('completedAt' in request.resource.data) ||
+          request.resource.data.completedAt == null ||
+          request.resource.data.completedAt is int
+        );
+
+      allow delete: if false;
+    }
+
+    match /capsules/{capsuleId} {
+      allow read: if esMiPareja(resource.data.coupleId);
+
+      allow create: if esMiPareja(request.resource.data.coupleId)
+        && request.resource.data.createdByUserId == request.auth.uid
+        && request.resource.data.createdAt is int
+        && request.resource.data.unlockAt is int
+        && request.resource.data.openedByUserIds is list;
+
+      allow update: if esMiPareja(resource.data.coupleId)
+        && request.resource.data.coupleId == resource.data.coupleId
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.message == resource.data.message
+        && request.resource.data.createdByUserId == resource.data.createdByUserId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.unlockAt == resource.data.unlockAt
+        && request.resource.data.openedByUserIds is list
+        && request.resource.data.openedByUserIds.hasAll(resource.data.openedByUserIds)
+        && request.resource.data.openedByUserIds.hasAny([request.auth.uid])
+        && request.resource.data.openedByUserIds.size() <= resource.data.openedByUserIds.size() + 1;
+
+      allow delete: if false;
+    }
+
+    match /daily_questions/{docId} {
+      allow read: if esMiPareja(resource.data.coupleId);
+
+      allow create: if esMiPareja(request.resource.data.coupleId)
+        && request.resource.data.dayKey is string
+        && request.resource.data.question is string
+        && request.resource.data.answers is map
+        && request.resource.data.createdAt is int
+        && (
+          !('revealedAt' in request.resource.data) ||
+          request.resource.data.revealedAt == null ||
+          request.resource.data.revealedAt is int
+        );
+
+      allow update: if esMiPareja(resource.data.coupleId)
+        && request.resource.data.coupleId == resource.data.coupleId
+        && request.resource.data.dayKey == resource.data.dayKey
+        && request.resource.data.question == resource.data.question
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.answers is map
+        && request.resource.data.answers.diff(resource.data.answers).changedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.answers[request.auth.uid] is string
+        && request.resource.data.answers.size() <= 2
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['answers', 'revealedAt'])
+        && (
+          !('revealedAt' in request.resource.data) ||
+          request.resource.data.revealedAt == resource.data.revealedAt ||
+          (
+            request.resource.data.revealedAt is int
+            && request.resource.data.answers.size() >= 2
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    match /wishes/{wishId} {
+      allow read: if esMiPareja(resource.data.coupleId);
+
+      allow create: if esMiPareja(request.resource.data.coupleId)
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.message is string
+        && request.resource.data.createdAt is int
+        && request.resource.data.seen == false;
+
+      allow update: if esMiPareja(resource.data.coupleId)
+        && request.resource.data.coupleId == resource.data.coupleId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.message == resource.data.message
+        && request.resource.data.fromUserId == resource.data.fromUserId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.seen == true
+        && resource.data.fromUserId != request.auth.uid
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['seen']);
+
+      allow delete: if false;
+    }
+
+    match /rituals/{coupleId}/weekly/{weekId} {
+      allow read, create, update: if esMiPareja(coupleId);
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

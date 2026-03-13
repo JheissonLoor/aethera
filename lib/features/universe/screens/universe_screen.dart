@@ -24,6 +24,7 @@ import 'package:aethera/shared/models/goal_model.dart';
 import 'package:aethera/shared/models/time_capsule_model.dart';
 import 'package:aethera/core/services/haptics_service.dart';
 import 'package:aethera/core/services/music_service.dart';
+import 'package:aethera/l10n/l10n_ext.dart';
 
 String _formatDateTimeLabel(BuildContext context, DateTime dateTime) {
   final localizations = MaterialLocalizations.of(context);
@@ -362,7 +363,11 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               HapticsService.success();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Respuesta guardada.')),
+                  SnackBar(
+                    content: Text(
+                      context.tr('Respuesta guardada.', 'Answer saved.'),
+                    ),
+                  ),
                 );
               }
             },
@@ -379,7 +384,14 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
     if (opened == null) {
       HapticsService.selection();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Esta capsula aun no se puede abrir.')),
+        SnackBar(
+          content: Text(
+            context.tr(
+              'Esta capsula aun no se puede abrir.',
+              'This capsule cannot be opened yet.',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -407,7 +419,10 @@ class _TopBar extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Text('Tu Universo', style: AetheraTokens.displaySmall()),
+                Text(
+                  context.tr('Tu Universo', 'Your Universe'),
+                  style: AetheraTokens.displaySmall(),
+                ),
                 if (state.streakDays >= 2) ...[
                   const SizedBox(width: 8),
                   _StreakBadge(days: state.streakDays),
@@ -513,8 +528,10 @@ class _SyncStatusBadge extends StatelessWidget {
     final icon = offline ? Icons.cloud_off_rounded : Icons.sync_rounded;
     final label =
         offline
-            ? (queued > 0 ? 'Sin conexion ($queued)' : 'Sin conexion')
-            : 'Sincronizando $queued';
+            ? (queued > 0
+                ? context.tr('Sin conexion ($queued)', 'Offline ($queued)')
+                : context.tr('Sin conexion', 'Offline'))
+            : context.tr('Sincronizando $queued', 'Syncing $queued');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -550,7 +567,7 @@ class _ConnectionBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Nivel $level',
+              context.tr('Nivel $level', 'Level $level'),
               style: AetheraTokens.labelSmall(color: AetheraTokens.auroraTeal),
             ),
             Text(
@@ -628,14 +645,14 @@ class _BottomBar extends ConsumerWidget {
             Expanded(
               child: _ActionButton(
                 icon: '💭',
-                label: 'Sentir',
+                label: context.tr('Sentir', 'Feel'),
                 onTap: () => _showEmotionSheet(context, ref),
               ),
             ),
             Expanded(
               child: _ActionButton(
                 icon: '✦',
-                label: 'Memoria',
+                label: context.tr('Memoria', 'Memory'),
                 onTap: () => _showAddMemorySheet(context, ref),
               ),
             ),
@@ -645,21 +662,21 @@ class _BottomBar extends ConsumerWidget {
             Expanded(
               child: _ActionButton(
                 icon: '✨',
-                label: 'Deseo',
+                label: context.tr('Deseo', 'Wish'),
                 onTap: () => _showWishSheet(context, ref),
               ),
             ),
             Expanded(
               child: _ActionButton(
                 icon: '⏳',
-                label: 'Capsula',
+                label: context.tr('Capsula', 'Capsule'),
                 onTap: () => _showCreateCapsuleSheet(context, ref),
               ),
             ),
             Expanded(
               child: _ActionButton(
                 icon: '🌙',
-                label: 'Ritual',
+                label: context.tr('Ritual', 'Ritual'),
                 onTap: () => context.push(AetheraRoutes.ritual),
               ),
             ),
@@ -748,7 +765,14 @@ class _BottomBar extends ConsumerWidget {
               HapticsService.success();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Capsula enviada al futuro.')),
+                  SnackBar(
+                    content: Text(
+                      context.tr(
+                        'Capsula enviada al futuro.',
+                        'Capsule sent to the future.',
+                      ),
+                    ),
+                  ),
                 );
               }
             },
@@ -803,28 +827,32 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: _onTapUp,
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _pressed ? 0.93 : 1,
-        duration: const Duration(milliseconds: 110),
-        curve: Curves.easeOut,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 120),
-          opacity: _pressed ? 0.9 : 1,
-          child: SizedBox(
-            height: 54,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(widget.icon, style: const TextStyle(fontSize: 22)),
-                const SizedBox(height: 4),
-                Text(widget.label, style: AetheraTokens.labelSmall()),
-              ],
+    return Semantics(
+      button: true,
+      label: widget.label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: _onTapDown,
+        onTapUp: _onTapUp,
+        onTapCancel: _onTapUp,
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _pressed ? 0.93 : 1,
+          duration: const Duration(milliseconds: 110),
+          curve: Curves.easeOut,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 120),
+            opacity: _pressed ? 0.9 : 1,
+            child: SizedBox(
+              height: 54,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(widget.icon, style: const TextStyle(fontSize: 22)),
+                  const SizedBox(height: 4),
+                  Text(widget.label, style: AetheraTokens.labelSmall()),
+                ],
+              ),
             ),
           ),
         ),
@@ -872,13 +900,19 @@ class _UniverseEmptyStateCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Tu universo esta listo para empezar',
+            context.tr(
+              'Tu universo esta listo para empezar',
+              'Your universe is ready to begin',
+            ),
             style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
           Text(
-            'Crea tu primera memoria o registra como te sientes para encender la experiencia.',
+            context.tr(
+              'Crea tu primera memoria o registra como te sientes para encender la experiencia.',
+              'Create your first memory or check in your mood to light up the experience.',
+            ),
             style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
             textAlign: TextAlign.center,
           ),
@@ -887,7 +921,7 @@ class _UniverseEmptyStateCard extends StatelessWidget {
             children: [
               Expanded(
                 child: AetheraButton(
-                  label: 'Crear memoria',
+                  label: context.tr('Crear memoria', 'Create memory'),
                   onPressed: onCreateMemory,
                   width: double.infinity,
                 ),
@@ -895,7 +929,7 @@ class _UniverseEmptyStateCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: AetheraButton(
-                  label: 'Check-in',
+                  label: context.tr('Check-in', 'Check-in'),
                   variant: AetheraButtonVariant.outlined,
                   onPressed: onCheckIn,
                   width: double.infinity,
@@ -933,7 +967,7 @@ class _DailyQuestionPanel extends StatelessWidget {
               const Text('💬', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Text(
-                'Pregunta del dia',
+                context.tr('Pregunta del dia', 'Question of the day'),
                 style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
               ),
               const Spacer(),
@@ -951,7 +985,7 @@ class _DailyQuestionPanel extends StatelessWidget {
           const SizedBox(height: 10),
           if (!answered)
             AetheraButton(
-              label: 'Responder ahora',
+              label: context.tr('Responder ahora', 'Answer now'),
               width: double.infinity,
               onPressed: onAnswer,
             ),
@@ -969,7 +1003,10 @@ class _DailyQuestionPanel extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Respuesta enviada. Esperando a tu pareja para revelar.',
+                    context.tr(
+                      'Respuesta enviada. Esperando a tu pareja para revelar.',
+                      'Answer sent. Waiting for your partner to reveal.',
+                    ),
                     style: AetheraTokens.bodySmall(
                       color: AetheraTokens.moonGlow,
                     ),
@@ -979,7 +1016,7 @@ class _DailyQuestionPanel extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             AetheraButton(
-              label: 'Editar respuesta',
+              label: context.tr('Editar respuesta', 'Edit answer'),
               variant: AetheraButtonVariant.ghost,
               width: double.infinity,
               onPressed: onAnswer,
@@ -987,19 +1024,22 @@ class _DailyQuestionPanel extends StatelessWidget {
           ],
           if (revealed) ...[
             _AnswerTile(
-              label: 'Tu respuesta',
+              label: context.tr('Tu respuesta', 'Your answer'),
               answer:
                   state.myDailyQuestionAnswer?.trim().isNotEmpty == true
                       ? state.myDailyQuestionAnswer!
-                      : 'Sin respuesta',
+                      : context.tr('Sin respuesta', 'No answer'),
             ),
             const SizedBox(height: 8),
             _AnswerTile(
-              label: 'Respuesta de tu pareja',
+              label: context.tr(
+                'Respuesta de tu pareja',
+                'Your partner answer',
+              ),
               answer:
                   state.partnerDailyQuestionAnswer?.trim().isNotEmpty == true
                       ? state.partnerDailyQuestionAnswer!
-                      : 'Aun no disponible',
+                      : context.tr('Aun no disponible', 'Not available yet'),
             ),
           ],
         ],
@@ -1099,7 +1139,10 @@ class _DailyQuestionAnswerSheetState extends State<_DailyQuestionAnswerSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Pregunta del dia', style: AetheraTokens.displaySmall()),
+            Text(
+              context.tr('Pregunta del dia', 'Question of the day'),
+              style: AetheraTokens.displaySmall(),
+            ),
             const SizedBox(height: 8),
             Text(
               widget.question,
@@ -1121,7 +1164,10 @@ class _DailyQuestionAnswerSheetState extends State<_DailyQuestionAnswerSheet> {
                 maxLength: 220,
                 style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
                 decoration: InputDecoration(
-                  hintText: 'Escribe tu respuesta...',
+                  hintText: context.tr(
+                    'Escribe tu respuesta...',
+                    'Write your answer...',
+                  ),
                   hintStyle: AetheraTokens.bodyMedium(
                     color: AetheraTokens.moonGlow.withValues(alpha: 0.4),
                   ),
@@ -1136,7 +1182,10 @@ class _DailyQuestionAnswerSheetState extends State<_DailyQuestionAnswerSheet> {
             ),
             const SizedBox(height: 16),
             AetheraButton(
-              label: _isSaving ? 'Guardando...' : 'Enviar respuesta',
+              label:
+                  _isSaving
+                      ? context.tr('Guardando...', 'Saving...')
+                      : context.tr('Enviar respuesta', 'Send answer'),
               isLoading: _isSaving,
               onPressed: _submit,
             ),
@@ -1187,12 +1236,15 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
               const Text('⏳', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Text(
-                'Capsulas del tiempo',
+                context.tr('Capsulas del tiempo', 'Time capsules'),
                 style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
               ),
               const Spacer(),
               Text(
-                '${available.length} listas',
+                context.tr(
+                  '${available.length} listas',
+                  '${available.length} ready',
+                ),
                 style: AetheraTokens.labelSmall(
                   color: AetheraTokens.auroraTeal,
                 ),
@@ -1202,14 +1254,20 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             nextUnlock == null
-                ? 'No hay capsulas pendientes por abrir.'
-                : 'Proxima apertura: ${_formatDateTimeLabel(context, nextUnlock)}',
+                ? context.tr(
+                  'No hay capsulas pendientes por abrir.',
+                  'There are no capsules pending to open.',
+                )
+                : context.tr(
+                  'Proxima apertura: ${_formatDateTimeLabel(context, nextUnlock)}',
+                  'Next opening: ${_formatDateTimeLabel(context, nextUnlock)}',
+                ),
             style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
           ),
           if (nextCapsule != null) ...[
             const SizedBox(height: 10),
             AetheraButton(
-              label: 'Abrir capsula',
+              label: context.tr('Abrir capsula', 'Open capsule'),
               variant: AetheraButtonVariant.outlined,
               onPressed: () => onOpenCapsule(nextCapsule),
               width: double.infinity,
@@ -1301,14 +1359,23 @@ class _CreateCapsuleSheetState extends State<_CreateCapsuleSheet> {
   Future<void> _create() async {
     final message = _messageCtrl.text.trim();
     if (message.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Escribe un mensaje.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('Escribe un mensaje.', 'Write a message.')),
+        ),
+      );
       return;
     }
     if (!_unlockAt.isAfter(DateTime.now())) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La fecha debe estar en el futuro.')),
+        SnackBar(
+          content: Text(
+            context.tr(
+              'La fecha debe estar en el futuro.',
+              'The date must be in the future.',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -1338,25 +1405,34 @@ class _CreateCapsuleSheetState extends State<_CreateCapsuleSheet> {
               children: [
                 const Text('⏳', style: TextStyle(fontSize: 20)),
                 const SizedBox(width: 10),
-                Text('Nueva capsula', style: AetheraTokens.displaySmall()),
+                Text(
+                  context.tr('Nueva capsula', 'New capsule'),
+                  style: AetheraTokens.displaySmall(),
+                ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              'Escribe algo para que solo se abra en una fecha futura.',
+              context.tr(
+                'Escribe algo para que solo se abra en una fecha futura.',
+                'Write something that only opens on a future date.',
+              ),
               style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
             ),
             const SizedBox(height: 18),
             _glassField(
               controller: _titleCtrl,
-              hint: 'Titulo opcional...',
+              hint: context.tr('Titulo opcional...', 'Optional title...'),
               maxLines: 1,
               maxLength: 48,
             ),
             const SizedBox(height: 10),
             _glassField(
               controller: _messageCtrl,
-              hint: 'Mensaje para el futuro...',
+              hint: context.tr(
+                'Mensaje para el futuro...',
+                'Message for the future...',
+              ),
               maxLines: 4,
               maxLength: 280,
             ),
@@ -1392,7 +1468,7 @@ class _CreateCapsuleSheetState extends State<_CreateCapsuleSheet> {
                       ),
                     ),
                     Text(
-                      'Cambiar',
+                      context.tr('Cambiar', 'Change'),
                       style: AetheraTokens.labelSmall(
                         color: AetheraTokens.auroraTeal,
                       ),
@@ -1403,13 +1479,19 @@ class _CreateCapsuleSheetState extends State<_CreateCapsuleSheet> {
             ),
             const SizedBox(height: 16),
             AetheraButton(
-              label: _isSaving ? 'Guardando...' : 'Guardar capsula',
+              label:
+                  _isSaving
+                      ? context.tr('Guardando...', 'Saving...')
+                      : context.tr('Guardar capsula', 'Save capsule'),
               isLoading: _isSaving,
               onPressed: _create,
             ),
             const SizedBox(height: 8),
             AetheraButton(
-              label: 'Abrir una capsula lista',
+              label: context.tr(
+                'Abrir una capsula lista',
+                'Open a ready capsule',
+              ),
               variant: AetheraButtonVariant.ghost,
               onPressed: widget.onOpenLatest,
             ),
@@ -1474,7 +1556,9 @@ class _OpenedCapsuleSheet extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  capsule.title.isEmpty ? 'Capsula del tiempo' : capsule.title,
+                  capsule.title.isEmpty
+                      ? context.tr('Capsula del tiempo', 'Time capsule')
+                      : capsule.title,
                   style: AetheraTokens.displaySmall(),
                 ),
               ),
@@ -1482,7 +1566,10 @@ class _OpenedCapsuleSheet extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Programada para ${_formatDateTimeLabel(context, capsule.unlockAt)}',
+            context.tr(
+              'Programada para ${_formatDateTimeLabel(context, capsule.unlockAt)}',
+              'Scheduled for ${_formatDateTimeLabel(context, capsule.unlockAt)}',
+            ),
             style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
           ),
           const SizedBox(height: 18),
@@ -1541,6 +1628,25 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
     }
   }
 
+  String _moodLabel(BuildContext context, String mood) {
+    switch (mood) {
+      case 'joy':
+        return context.tr('Alegría', 'Joy');
+      case 'love':
+        return context.tr('Amor', 'Love');
+      case 'peace':
+        return context.tr('Paz', 'Peace');
+      case 'longing':
+        return context.tr('Anhelo', 'Longing');
+      case 'melancholy':
+        return context.tr('Melancolía', 'Melancholy');
+      case 'anxious':
+        return context.tr('Angustia', 'Anxious');
+      default:
+        return context.tr('Neutral', 'Neutral');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -1553,10 +1659,16 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('¿Cómo te sientes?', style: AetheraTokens.displaySmall()),
+            Text(
+              context.tr('¿Cómo te sientes?', 'How are you feeling?'),
+              style: AetheraTokens.displaySmall(),
+            ),
             const SizedBox(height: 6),
             Text(
-              'Tu universo reflejará lo que hay en tu corazón.',
+              context.tr(
+                'Tu universo reflejará lo que hay en tu corazón.',
+                'Your universe will reflect what is in your heart.',
+              ),
               style: AetheraTokens.bodyMedium(color: AetheraTokens.moonGlow),
               textAlign: TextAlign.center,
             ),
@@ -1609,7 +1721,7 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  AppConstants.emotionLabels[mood] ?? mood,
+                                  _moodLabel(context, mood),
                                   style: AetheraTokens.labelSmall(
                                     color:
                                         isSelected
@@ -1667,11 +1779,11 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
   bool _isSaving = false;
 
   static const _types = [
-    ('constellation', '⭐', 'Constelación'),
-    ('tree', '🌳', 'Árbol'),
-    ('lighthouse', '🏮', 'Faro'),
-    ('bridge', '🌉', 'Puente'),
-    ('island', '🏝️', 'Isla'),
+    ('constellation', '⭐'),
+    ('tree', '🌳'),
+    ('lighthouse', '🏮'),
+    ('bridge', '🌉'),
+    ('island', '🏝️'),
   ];
 
   @override
@@ -1714,7 +1826,10 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Text('Nueva memoria', style: AetheraTokens.displaySmall()),
+                Text(
+                  context.tr('Nueva memoria', 'New memory'),
+                  style: AetheraTokens.displaySmall(),
+                ),
               ],
             ),
 
@@ -1726,8 +1841,19 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
                 scrollDirection: Axis.horizontal,
                 children:
                     _types.map((t) {
-                      final (type, emoji, label) = t;
+                      final (type, emoji) = t;
                       final isSelected = _selectedType == type;
+                      final label = switch (type) {
+                        'constellation' => context.tr(
+                          'Constelación',
+                          'Constellation',
+                        ),
+                        'tree' => context.tr('Árbol', 'Tree'),
+                        'lighthouse' => context.tr('Faro', 'Lighthouse'),
+                        'bridge' => context.tr('Puente', 'Bridge'),
+                        'island' => context.tr('Isla', 'Island'),
+                        _ => type,
+                      };
                       return GestureDetector(
                         onTap: () => setState(() => _selectedType = type),
                         child: AnimatedContainer(
@@ -1781,7 +1907,7 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
 
             _glassField(
               controller: _titleCtrl,
-              hint: 'Título del recuerdo...',
+              hint: context.tr('Título del recuerdo...', 'Memory title...'),
               maxLines: 1,
             ),
 
@@ -1789,14 +1915,17 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
 
             _glassField(
               controller: _descCtrl,
-              hint: 'Cuéntame sobre este momento...',
+              hint: context.tr(
+                'Cuéntame sobre este momento...',
+                'Tell me about this moment...',
+              ),
               maxLines: 3,
             ),
 
             const SizedBox(height: 24),
 
             AetheraButton(
-              label: 'Guardar memoria  ✦',
+              label: context.tr('Guardar memoria  ✦', 'Save memory  ✦'),
               isLoading: _isSaving,
               onPressed: _save,
             ),
@@ -1861,11 +1990,11 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
   bool _isSaving = false;
 
   static const _symbols = [
-    ('lighthouse', '🏮', 'Faro'),
-    ('castle', '🏰', 'Castillo'),
-    ('mountain', '⛰️', 'Montaña'),
-    ('island', '🏝️', 'Isla'),
-    ('bridge', '🌉', 'Puente'),
+    ('lighthouse', '🏮'),
+    ('castle', '🏰'),
+    ('mountain', '⛰️'),
+    ('island', '🏝️'),
+    ('bridge', '🌉'),
   ];
 
   @override
@@ -1925,7 +2054,10 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
               children: [
                 const Text('🎯', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 10),
-                Text('Nueva meta', style: AetheraTokens.displaySmall()),
+                Text(
+                  context.tr('Nueva meta', 'New goal'),
+                  style: AetheraTokens.displaySmall(),
+                ),
               ],
             ),
 
@@ -1937,8 +2069,16 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
                 scrollDirection: Axis.horizontal,
                 children:
                     _symbols.map((s) {
-                      final (symbol, emoji, label) = s;
+                      final (symbol, emoji) = s;
                       final isSelected = _selectedSymbol == symbol;
+                      final label = switch (symbol) {
+                        'lighthouse' => context.tr('Faro', 'Lighthouse'),
+                        'castle' => context.tr('Castillo', 'Castle'),
+                        'mountain' => context.tr('Montaña', 'Mountain'),
+                        'island' => context.tr('Isla', 'Island'),
+                        'bridge' => context.tr('Puente', 'Bridge'),
+                        _ => symbol,
+                      };
                       return GestureDetector(
                         onTap: () => setState(() => _selectedSymbol = symbol),
                         child: AnimatedContainer(
@@ -1992,7 +2132,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
 
             _glassField(
               controller: _titleCtrl,
-              hint: 'Título de la meta...',
+              hint: context.tr('Título de la meta...', 'Goal title...'),
               maxLines: 1,
             ),
 
@@ -2000,7 +2140,10 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
 
             _glassField(
               controller: _descCtrl,
-              hint: 'Descríbela con detalle...',
+              hint: context.tr(
+                'Descríbela con detalle...',
+                'Describe it in detail...',
+              ),
               maxLines: 2,
             ),
 
@@ -2025,7 +2168,10 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
                     const Text('📅', style: TextStyle(fontSize: 16)),
                     const SizedBox(width: 12),
                     Text(
-                      'Fecha objetivo: ${_targetDate.day}/${_targetDate.month}/${_targetDate.year}',
+                      context.tr(
+                        'Fecha objetivo: ${_targetDate.day}/${_targetDate.month}/${_targetDate.year}',
+                        'Target date: ${_targetDate.day}/${_targetDate.month}/${_targetDate.year}',
+                      ),
                       style: AetheraTokens.bodyMedium(
                         color: AetheraTokens.moonGlow,
                       ),
@@ -2044,7 +2190,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
             const SizedBox(height: 24),
 
             AetheraButton(
-              label: 'Crear meta  🎯',
+              label: context.tr('Crear meta  🎯', 'Create goal  🎯'),
               isLoading: _isSaving,
               onPressed: _save,
             ),
@@ -2193,7 +2339,12 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
                 _StatChip(
                   icon: '📅',
                   label:
-                      isCompleted ? 'Completada' : '$_daysLeft días restantes',
+                      isCompleted
+                          ? context.tr('Completada', 'Completed')
+                          : context.tr(
+                            '$_daysLeft días restantes',
+                            '$_daysLeft days left',
+                          ),
                   color:
                       isCompleted
                           ? AetheraTokens.goldenDawn
@@ -2202,7 +2353,10 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
                 const SizedBox(width: 10),
                 _StatChip(
                   icon: '✦',
-                  label: '$progressPercent% completado',
+                  label: context.tr(
+                    '$progressPercent% completado',
+                    '$progressPercent% completed',
+                  ),
                   color: accentColor,
                 ),
               ],
@@ -2214,7 +2368,7 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Progreso',
+                  context.tr('Progreso', 'Progress'),
                   style: AetheraTokens.labelLarge(
                     color: AetheraTokens.moonGlow,
                   ),
@@ -2285,7 +2439,10 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
                     const Text('🏆', style: TextStyle(fontSize: 20)),
                     const SizedBox(width: 10),
                     Text(
-                      '¡Meta cumplida! +20 conexión',
+                      context.tr(
+                        '¡Meta cumplida! +20 conexión',
+                        'Goal completed! +20 connection',
+                      ),
                       style: AetheraTokens.labelLarge(
                         color: AetheraTokens.goldenDawn,
                       ),
@@ -2300,8 +2457,8 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
               AetheraButton(
                 label:
                     _progress >= 1.0
-                        ? '¡Completar meta! 🏆'
-                        : 'Guardar progreso',
+                        ? context.tr('¡Completar meta! 🏆', 'Complete goal! 🏆')
+                        : context.tr('Guardar progreso', 'Save progress'),
                 isLoading: _isSaving,
                 onPressed: _save,
               ),
@@ -2367,7 +2524,10 @@ class _NewMemoryToast extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              'Nueva memoria añadida al universo',
+              context.tr(
+                'Nueva memoria añadida al universo',
+                'New memory added to the universe',
+              ),
               style: AetheraTokens.labelSmall(color: AetheraTokens.auroraTeal),
             ),
           ],
@@ -2570,22 +2730,22 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
     }
   }
 
-  String _emotionLabel(String mood) {
+  String _emotionLabel(BuildContext context, String mood) {
     switch (mood) {
       case 'joy':
-        return 'Alegría ✨';
+        return context.tr('Alegría ✨', 'Joy ✨');
       case 'love':
-        return 'Amor 💕';
+        return context.tr('Amor 💕', 'Love 💕');
       case 'peace':
-        return 'Paz 🌿';
+        return context.tr('Paz 🌿', 'Peace 🌿');
       case 'longing':
-        return 'Anhelo 🌙';
+        return context.tr('Anhelo 🌙', 'Longing 🌙');
       case 'melancholy':
-        return 'Melancolía 🌌';
+        return context.tr('Melancolía 🌌', 'Melancholy 🌌');
       case 'anxious':
-        return 'Angustia 🌊';
+        return context.tr('Angustia 🌊', 'Anxious 🌊');
       default:
-        return 'Neutral ✦';
+        return context.tr('Neutral ✦', 'Neutral ✦');
     }
   }
 
@@ -2638,7 +2798,7 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              _emotionLabel(widget.mood),
+                              _emotionLabel(context, widget.mood),
                               style: AetheraTokens.displaySmall().copyWith(
                                 color: color,
                                 fontSize: 22,
@@ -2646,7 +2806,10 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '+${AppConstants.pointsDailyCheckin} conexión',
+                              context.tr(
+                                '+${AppConstants.pointsDailyCheckin} conexión',
+                                '+${AppConstants.pointsDailyCheckin} connection',
+                              ),
                               style: AetheraTokens.bodySmall(
                                 color: color.withValues(alpha: 0.8),
                               ),
@@ -2779,12 +2942,18 @@ class _WishSheetState extends State<_WishSheet> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Lanza un deseo al universo',
+              context.tr(
+                'Lanza un deseo al universo',
+                'Send a wish to the universe',
+              ),
               style: AetheraTokens.displaySmall(),
             ),
             const SizedBox(height: 6),
             Text(
-              'Vuela como una estrella fugaz hasta tu persona.',
+              context.tr(
+                'Vuela como una estrella fugaz hasta tu persona.',
+                'It flies like a shooting star to your person.',
+              ),
               style: AetheraTokens.bodyMedium(color: AetheraTokens.moonGlow),
               textAlign: TextAlign.center,
             ),
@@ -2804,7 +2973,10 @@ class _WishSheetState extends State<_WishSheet> {
                 maxLength: 120,
                 style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
                 decoration: InputDecoration(
-                  hintText: 'Te pienso, te extraño, te amo...',
+                  hintText: context.tr(
+                    'Te pienso, te extraño, te amo...',
+                    'I miss you, I think of you, I love you...',
+                  ),
                   hintStyle: AetheraTokens.bodyMedium(
                     color: AetheraTokens.moonGlow.withValues(alpha: 0.4),
                   ),
@@ -2819,7 +2991,10 @@ class _WishSheetState extends State<_WishSheet> {
             ),
             const SizedBox(height: 20),
             AetheraButton(
-              label: _isSending ? 'Lanzando...' : 'Lanzar deseo  ✨',
+              label:
+                  _isSending
+                      ? context.tr('Lanzando...', 'Launching...')
+                      : context.tr('Lanzar deseo  ✨', 'Send wish  ✨'),
               isLoading: _isSending,
               onPressed: _send,
             ),
@@ -2953,7 +3128,10 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Un deseo llegó a tu universo',
+                          context.tr(
+                            'Un deseo llegó a tu universo',
+                            'A wish arrived in your universe',
+                          ),
                           style: AetheraTokens.bodySmall(
                             color: AetheraTokens.moonGlow,
                           ),
@@ -2999,7 +3177,7 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
                               gradient: AetheraTokens.auroraGradient,
                             ),
                             child: Text(
-                              'Recibido  💕',
+                              context.tr('Recibido  💕', 'Received  💕'),
                               style: AetheraTokens.labelLarge(
                                 color: AetheraTokens.deepSpace,
                               ),
@@ -3073,61 +3251,68 @@ class _SoloBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push(AetheraRoutes.profile),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: LinearGradient(
-            colors: [
-              AetheraTokens.nebulaPurple.withValues(alpha: 0.25),
-              AetheraTokens.auroraTeal.withValues(alpha: 0.12),
-            ],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          border: Border.all(
-            color: AetheraTokens.auroraTeal.withValues(alpha: 0.3),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AetheraTokens.nebulaPurple.withValues(alpha: 0.15),
-              blurRadius: 20,
-              spreadRadius: 2,
+    return Semantics(
+      button: true,
+      label: context.tr('Invita a tu pareja', 'Invite your partner'),
+      child: GestureDetector(
+        onTap: () => context.push(AetheraRoutes.profile),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: LinearGradient(
+              colors: [
+                AetheraTokens.nebulaPurple.withValues(alpha: 0.25),
+                AetheraTokens.auroraTeal.withValues(alpha: 0.12),
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const Text('💫', style: TextStyle(fontSize: 18)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Invita a tu pareja',
-                    style: AetheraTokens.labelLarge(
-                      color: AetheraTokens.starlight,
-                    ),
-                  ),
-                  Text(
-                    'Código: $inviteCode  •  Toca para conectar',
-                    style: AetheraTokens.bodySmall(
-                      color: AetheraTokens.auroraTeal,
-                    ),
-                  ),
-                ],
+            border: Border.all(
+              color: AetheraTokens.auroraTeal.withValues(alpha: 0.3),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AetheraTokens.nebulaPurple.withValues(alpha: 0.15),
+                blurRadius: 20,
+                spreadRadius: 2,
               ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: AetheraTokens.moonGlow,
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            children: [
+              const Text('💫', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr('Invita a tu pareja', 'Invite your partner'),
+                      style: AetheraTokens.labelLarge(
+                        color: AetheraTokens.starlight,
+                      ),
+                    ),
+                    Text(
+                      context.tr(
+                        'Código: $inviteCode  •  Toca para conectar',
+                        'Code: $inviteCode  •  Tap to connect',
+                      ),
+                      style: AetheraTokens.bodySmall(
+                        color: AetheraTokens.auroraTeal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: AetheraTokens.moonGlow,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -3209,7 +3394,7 @@ class _CosmicEventCutsceneOverlayState
                   child: TextButton(
                     onPressed: widget.onSkip,
                     child: Text(
-                      'Saltar',
+                      context.tr('Saltar', 'Skip'),
                       style: AetheraTokens.bodySmall(
                         color: AetheraTokens.moonGlow,
                       ),
@@ -3223,7 +3408,10 @@ class _CosmicEventCutsceneOverlayState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'EVENTO CÓSMICO DESBLOQUEADO',
+                          context.tr(
+                            'EVENTO CÓSMICO DESBLOQUEADO',
+                            'COSMIC EVENT UNLOCKED',
+                          ),
                           style: AetheraTokens.labelLarge(
                             color: AetheraTokens.auroraTeal,
                           ),
@@ -3252,7 +3440,10 @@ class _CosmicEventCutsceneOverlayState
                         ),
                         const SizedBox(height: 14),
                         Text(
-                          '+${AppConstants.pointsSyncRitual} conexión • Reliquia forjada',
+                          context.tr(
+                            '+${AppConstants.pointsSyncRitual} conexión • Reliquia forjada',
+                            '+${AppConstants.pointsSyncRitual} connection • Relic forged',
+                          ),
                           style: AetheraTokens.bodyMedium(
                             color: AetheraTokens.starlight,
                           ),

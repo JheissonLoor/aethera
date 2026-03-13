@@ -6,6 +6,8 @@ import 'package:aethera/shared/models/couple_model.dart';
 
 final coupleServiceProvider =
     Provider<CoupleService>((ref) => CoupleService());
+final pairingAppStateNotifierProvider =
+    Provider<AppStateNotifier>((ref) => appStateNotifier);
 
 class PairingState {
   final CoupleModel? couple;
@@ -25,6 +27,7 @@ class PairingState {
 
 class PairingNotifier extends Notifier<PairingState> {
   CoupleService get _service => ref.read(coupleServiceProvider);
+  AppStateNotifier get _appState => ref.read(pairingAppStateNotifierProvider);
 
   @override
   PairingState build() => const PairingState();
@@ -49,7 +52,7 @@ class PairingNotifier extends Notifier<PairingState> {
   void enterSolo() {
     final couple = state.couple;
     if (couple != null) {
-      appStateNotifier.setCoupleId(couple.id);
+      _appState.setCoupleId(couple.id);
     }
   }
 
@@ -57,7 +60,7 @@ class PairingNotifier extends Notifier<PairingState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final couple = await _service.joinCouple(inviteCode, userId);
-      appStateNotifier.setCoupleId(couple.id);
+      _appState.setCoupleId(couple.id);
       state = state.copyWith(couple: couple, isLoading: false);
       return true;
     } catch (e) {

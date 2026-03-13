@@ -8,25 +8,38 @@ import 'package:aethera/core/services/telemetry_service.dart';
 /// ChangeNotifier used as GoRouter's [refreshListenable].
 /// Tracks auth state + whether the current user has a coupleId.
 class AppStateNotifier extends ChangeNotifier {
-  AppStateNotifier() {
-    _sub = FirebaseAuth.instance.authStateChanges().listen(_onAuthChanged);
-    _loadOnboarding();
+  AppStateNotifier({FirebaseAuth? auth, bool autoBootstrap = true})
+      : _auth = auth {
+    if (!autoBootstrap) {
+      _authLoaded = true;
+      _onboardingLoaded = true;
+      return;
+    }
+
+    final runtimeAuth = _auth ?? FirebaseAuth.instance;
+    _sub = runtimeAuth.authStateChanges().listen(_onAuthChanged);
+    unawaited(_loadOnboarding());
   }
 
-  late final StreamSubscription<User?> _sub;
+  final FirebaseAuth? _auth;
+  StreamSubscription<User?>? _sub;
 
   User? _user;
   String? _coupleId;
   bool _authLoaded = false;
   bool _onboardingLoaded = false;
   bool _onboardingDone = false;
+  bool _debugLockExternalAuth = false;
+  bool? _debugIsAuthenticated;
+  String? _debugCoupleId;
+  bool? _debugOnboardingDone;
 
   User? get currentUser => _user;
-  String? get coupleId => _coupleId;
+  String? get coupleId => _debugCoupleId ?? _coupleId;
   bool get isLoading => !_authLoaded || !_onboardingLoaded;
-  bool get isAuthenticated => _user != null;
-  bool get hasCoupleId => _coupleId != null && _coupleId!.isNotEmpty;
-  bool get onboardingDone => _onboardingDone;
+  bool get isAuthenticated => _debugIsAuthenticated ?? (_user != null);
+  bool get hasCoupleId => coupleId != null && coupleId!.isNotEmpty;
+  bool get onboardingDone => _debugOnboardingDone ?? _onboardingDone;
 
   Future<void> _loadOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
@@ -43,6 +56,8 @@ class AppStateNotifier extends ChangeNotifier {
   }
 
   Future<void> _onAuthChanged(User? user) async {
+    if (_debugLockExternalAuth) return;
+
     _user = user;
     if (user != null) {
       try {
@@ -78,16 +93,45 @@ class AppStateNotifier extends ChangeNotifier {
 
   /// Called after pairing so the router redirects immediately.
   void setCoupleId(String coupleId) {
+    if (_debugIsAuthenticated != null) {
+      _debugCoupleId = coupleId;
+    }
     _coupleId = coupleId;
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void debugSetSession({
+    required bool isAuthenticated,
+    String? coupleId,
+    bool onboardingDone = true,
+    bool isLoading = false,
+    bool lockExternalAuth = true,
+  }) {
+    _debugLockExternalAuth = lockExternalAuth;
+    _debugIsAuthenticated = isAuthenticated;
+    _debugCoupleId = coupleId;
+    _debugOnboardingDone = onboardingDone;
+    _authLoaded = !isLoading;
+    _onboardingLoaded = !isLoading;
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void debugClearSessionOverrides() {
+    _debugLockExternalAuth = false;
+    _debugIsAuthenticated = null;
+    _debugCoupleId = null;
+    _debugOnboardingDone = null;
     notifyListeners();
   }
 
   @override
   void dispose() {
-    _sub.cancel();
+    _sub?.cancel();
     super.dispose();
   }
 }
 
 /// Singleton — shared by app_router and pairing_provider.
-final appStateNotifier = AppStateNotifier();
+final AppStateNotifier appStateNotifier = AppStateNotifier();

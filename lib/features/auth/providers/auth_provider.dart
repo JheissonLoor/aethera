@@ -31,9 +31,9 @@ class AuthNotifier extends AsyncNotifier<void> {
       String email, String password, String displayName) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final cred = await _authService.register(email, password);
+      final uid = await _authService.register(email, password);
       await _userService.createUser(UserModel(
-        uid: cred.user!.uid,
+        uid: uid,
         email: email.trim(),
         displayName: displayName.trim(),
         createdAt: DateTime.now(),

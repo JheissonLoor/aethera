@@ -11,6 +11,7 @@ import 'package:aethera/features/ritual/providers/ritual_provider.dart';
 import 'package:aethera/features/universe/providers/universe_provider.dart';
 import 'package:aethera/features/universe/widgets/cosmic_background.dart';
 import 'package:aethera/features/universe/widgets/aurora_effect.dart';
+import 'package:aethera/l10n/l10n_ext.dart';
 import 'package:aethera/shared/widgets/aethera_button.dart';
 import 'package:aethera/shared/widgets/aethera_glass_panel.dart';
 
@@ -379,9 +380,12 @@ class _AlreadyCompletedView extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Ritual Semanal', style: AetheraTokens.displaySmall()),
                     Text(
-                      'Semana $week',
+                      context.tr('Ritual Semanal', 'Weekly Ritual'),
+                      style: AetheraTokens.displaySmall(),
+                    ),
+                    Text(
+                      context.tr('Semana $week', 'Week $week'),
                       style: AetheraTokens.bodySmall(
                         color: AetheraTokens.moonGlow,
                       ),
@@ -414,7 +418,10 @@ class _AlreadyCompletedView extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Tu ritual de esta semana está completo',
+                    context.tr(
+                      'Tu ritual de esta semana está completo',
+                      'Your ritual for this week is complete',
+                    ),
                     style: AetheraTokens.bodyMedium(
                       color: AetheraTokens.auroraTeal,
                     ),
@@ -428,7 +435,7 @@ class _AlreadyCompletedView extends StatelessWidget {
             // My answer card
             if (state.myAnswer != null && state.myAnswer!.isNotEmpty) ...[
               _CartaCard(
-                label: 'Tu respuesta',
+                label: context.tr('Tu respuesta', 'Your answer'),
                 emoji: '✍️',
                 question: state.weekQuestion,
                 answer: state.myAnswer!,
@@ -450,7 +457,7 @@ class _AlreadyCompletedView extends StatelessWidget {
             // Partner section
             if (state.partnerCompleted) ...[
               AetheraButton(
-                label: 'Leer su carta  💕',
+                label: context.tr('Leer su carta  💕', 'Read their letter  💕'),
                 onPressed: onViewPartnerCarta,
               ).animate().fadeIn(delay: 500.ms),
             ] else ...[
@@ -465,14 +472,20 @@ class _AlreadyCompletedView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Esperando su respuesta...',
+                            context.tr(
+                              'Esperando su respuesta...',
+                              'Waiting for their answer...',
+                            ),
                             style: AetheraTokens.bodyMedium(
                               color: AetheraTokens.starlight,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Te avisaremos cuando complete su ritual',
+                            context.tr(
+                              'Te avisaremos cuando complete su ritual',
+                              'We will notify you when ritual is completed',
+                            ),
                             style: AetheraTokens.bodySmall(
                               color: AetheraTokens.moonGlow,
                             ),
@@ -655,7 +668,7 @@ class _SyncLiveCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Sincronía en vivo',
+                context.tr('Sincronía en vivo', 'Live sync'),
                 style: AetheraTokens.labelLarge(
                   color:
                       state.syncCompleted
@@ -673,23 +686,37 @@ class _SyncLiveCard extends StatelessWidget {
           const SizedBox(height: 10),
           if (state.syncCompleted) ...[
             Text(
-              'Evento desbloqueado: ${state.syncEvent ?? 'Ritual completo'}',
+              context.tr(
+                'Evento desbloqueado: ${state.syncEvent ?? 'Ritual completo'}',
+                'Unlocked event: ${state.syncEvent ?? 'Ritual completed'}',
+              ),
               style: AetheraTokens.bodyMedium(color: AetheraTokens.auroraTeal),
             ),
             const SizedBox(height: 6),
             Text(
-              '+${AppConstants.pointsSyncRitual} Conexión · Reliquia añadida al universo',
+              context.tr(
+                '+${AppConstants.pointsSyncRitual} Conexión · Reliquia añadida al universo',
+                '+${AppConstants.pointsSyncRitual} Connection · Relic added to universe',
+              ),
               style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
             ),
           ] else ...[
             Row(
               children: [
-                _SyncBadge(label: 'Tú', active: state.syncMeHolding),
+                _SyncBadge(
+                  label: context.tr('Tú', 'You'),
+                  active: state.syncMeHolding,
+                ),
                 const SizedBox(width: 8),
-                _SyncBadge(label: 'Pareja', active: state.syncPartnerHolding),
+                _SyncBadge(
+                  label: context.tr('Pareja', 'Partner'),
+                  active: state.syncPartnerHolding,
+                ),
                 const Spacer(),
                 Text(
-                  bothHolding ? 'Sincronizando...' : 'Esperando sincronía',
+                  bothHolding
+                      ? context.tr('Sincronizando...', 'Syncing...')
+                      : context.tr('Esperando sincronía', 'Waiting for sync'),
                   style: AetheraTokens.bodySmall(
                     color:
                         bothHolding
@@ -714,8 +741,14 @@ class _SyncLiveCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               bothHolding
-                  ? 'Faltan ${state.syncSecondsLeft}s para desbloquear evento cósmico'
-                  : 'Mantengan presionado al mismo tiempo para iniciar la cuenta',
+                  ? context.tr(
+                    'Faltan ${state.syncSecondsLeft}s para desbloquear evento cósmico',
+                    '${state.syncSecondsLeft}s left to unlock cosmic event',
+                  )
+                  : context.tr(
+                    'Mantengan presionado al mismo tiempo para iniciar la cuenta',
+                    'Hold at the same time to start the countdown',
+                  ),
               style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
             ),
             const SizedBox(height: 14),
@@ -723,58 +756,65 @@ class _SyncLiveCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: AetheraButton(
-                    label: 'Invitar',
+                    label: context.tr('Invitar', 'Invite'),
                     variant: AetheraButtonVariant.outlined,
                     onPressed: onInvite,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: GestureDetector(
-                    onLongPressStart: (_) => onHoldStart(),
-                    onLongPressEnd: (_) => onHoldEnd(),
-                    onLongPressCancel: onHoldEnd,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      height: 52,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient:
-                            state.syncMeHolding
-                                ? LinearGradient(
-                                  colors: [
-                                    AetheraTokens.auroraTeal.withValues(
-                                      alpha: 0.35,
-                                    ),
-                                    AetheraTokens.nebulaPurple.withValues(
-                                      alpha: 0.28,
-                                    ),
-                                  ],
-                                )
-                                : null,
-                        color:
-                            state.syncMeHolding
-                                ? null
-                                : Colors.white.withValues(alpha: 0.06),
-                        border: Border.all(
+                  child: Semantics(
+                    button: true,
+                    label: context.tr(
+                      'Mantener pulsado para sincronizar',
+                      'Hold to sync',
+                    ),
+                    child: GestureDetector(
+                      onLongPressStart: (_) => onHoldStart(),
+                      onLongPressEnd: (_) => onHoldEnd(),
+                      onLongPressCancel: onHoldEnd,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        height: 52,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient:
+                              state.syncMeHolding
+                                  ? LinearGradient(
+                                    colors: [
+                                      AetheraTokens.auroraTeal.withValues(
+                                        alpha: 0.35,
+                                      ),
+                                      AetheraTokens.nebulaPurple.withValues(
+                                        alpha: 0.28,
+                                      ),
+                                    ],
+                                  )
+                                  : null,
                           color:
                               state.syncMeHolding
-                                  ? AetheraTokens.auroraTeal.withValues(
-                                    alpha: 0.7,
-                                  )
-                                  : Colors.white.withValues(alpha: 0.18),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          state.syncMeHolding
-                              ? 'SINCRONIZANDO...'
-                              : 'MANTENER 60S',
-                          style: AetheraTokens.labelLarge(
+                                  ? null
+                                  : Colors.white.withValues(alpha: 0.06),
+                          border: Border.all(
                             color:
                                 state.syncMeHolding
-                                    ? AetheraTokens.starlight
-                                    : AetheraTokens.moonGlow,
+                                    ? AetheraTokens.auroraTeal.withValues(
+                                      alpha: 0.7,
+                                    )
+                                    : Colors.white.withValues(alpha: 0.18),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            state.syncMeHolding
+                                ? context.tr('SINCRONIZANDO...', 'SYNCING...')
+                                : context.tr('MANTENER 60S', 'HOLD 60S'),
+                            style: AetheraTokens.labelLarge(
+                              color:
+                                  state.syncMeHolding
+                                      ? AetheraTokens.starlight
+                                      : AetheraTokens.moonGlow,
+                            ),
                           ),
                         ),
                       ),
@@ -897,7 +937,10 @@ class _QuestionPageState extends State<_QuestionPage> {
                       color: AetheraTokens.nebulaPurple.withValues(alpha: 0.1),
                     ),
                     child: Text(
-                      'RITUAL SEMANAL · SEMANA $week',
+                      context.tr(
+                        'RITUAL SEMANAL · SEMANA $week',
+                        'WEEKLY RITUAL · WEEK $week',
+                      ),
                       style: AetheraTokens.labelSmall(
                         color: AetheraTokens.nebulaPurple,
                       ),
@@ -948,8 +991,10 @@ class _QuestionPageState extends State<_QuestionPage> {
                         color: AetheraTokens.starlight,
                       ),
                       decoration: InputDecoration(
-                        hintText:
-                            'Escribe con honestidad... este espacio es solo para nosotros.',
+                        hintText: context.tr(
+                          'Escribe con honestidad... este espacio es solo para nosotros.',
+                          'Write honestly... this space is only for us.',
+                        ),
                         hintStyle: AetheraTokens.bodyMedium(
                           color: AetheraTokens.moonGlow.withValues(alpha: 0.5),
                         ),
@@ -969,7 +1014,7 @@ class _QuestionPageState extends State<_QuestionPage> {
                 opacity: _hasText ? 1.0 : 0.4,
                 duration: const Duration(milliseconds: 300),
                 child: AetheraButton(
-                  label: 'Siguiente →',
+                  label: context.tr('Siguiente →', 'Next →'),
                   onPressed: _hasText ? widget.onNext : null,
                 ),
               ).animate().fadeIn(delay: 600.ms),
@@ -1026,14 +1071,17 @@ class _GratitudePage extends StatelessWidget {
               const SizedBox(height: 20),
 
               Text(
-                'Gratitud',
+                context.tr('Gratitud', 'Gratitude'),
                 style: AetheraTokens.displayMedium().copyWith(letterSpacing: 4),
               ).animate().fadeIn(delay: 100.ms, duration: 600.ms),
 
               const SizedBox(height: 8),
 
               Text(
-                '¿Qué amas de él/ella esta semana?',
+                context.tr(
+                  '¿Qué amas de él/ella esta semana?',
+                  'What do you love about them this week?',
+                ),
                 style: AetheraTokens.bodyLarge(color: AetheraTokens.moonGlow),
               ).animate().fadeIn(delay: 200.ms),
 
@@ -1070,9 +1118,18 @@ class _GratitudePage extends StatelessWidget {
                             decoration: InputDecoration(
                               hintText:
                                   [
-                                    'Tu forma de hacerme reír...',
-                                    'Cómo me haces sentir especial...',
-                                    'Algo que admiro de ti...',
+                                    context.tr(
+                                      'Tu forma de hacerme reír...',
+                                      'The way you make me laugh...',
+                                    ),
+                                    context.tr(
+                                      'Cómo me haces sentir especial...',
+                                      'How you make me feel special...',
+                                    ),
+                                    context.tr(
+                                      'Algo que admiro de ti...',
+                                      'Something I admire about you...',
+                                    ),
                                   ][i],
                               hintStyle: AetheraTokens.bodyMedium(
                                 color: AetheraTokens.moonGlow.withValues(
@@ -1097,7 +1154,7 @@ class _GratitudePage extends StatelessWidget {
               const SizedBox(height: 32),
 
               AetheraButton(
-                label: 'Completar ritual  ✨',
+                label: context.tr('Completar ritual  ✨', 'Complete ritual  ✨'),
                 isLoading: isLoading,
                 onPressed: onSubmit,
               ).animate().fadeIn(delay: 700.ms),
@@ -1166,7 +1223,7 @@ class _CelebrationPage extends StatelessWidget {
                       const SizedBox(height: 32),
 
                       Text(
-                            'Ritual completado',
+                            context.tr('Ritual completado', 'Ritual completed'),
                             style: AetheraTokens.displayMedium().copyWith(
                               letterSpacing: 3,
                             ),
@@ -1178,7 +1235,10 @@ class _CelebrationPage extends StatelessWidget {
                       const SizedBox(height: 12),
 
                       Text(
-                        'Tu respuesta viaja hacia él/ella',
+                        context.tr(
+                          'Tu respuesta viaja hacia él/ella',
+                          'Your answer is traveling to your partner',
+                        ),
                         style: AetheraTokens.bodyMedium(
                           color: AetheraTokens.moonGlow,
                         ),
@@ -1222,7 +1282,7 @@ class _CelebrationPage extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  '+15 Conexión',
+                                  context.tr('+15 Conexión', '+15 Connection'),
                                   style: AetheraTokens.labelLarge(
                                     color: AetheraTokens.auroraTeal,
                                   ),
@@ -1250,7 +1310,10 @@ class _CelebrationPage extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: AetheraButton(
-                                label: 'Leer su carta  💌',
+                                label: context.tr(
+                                  'Leer su carta  💌',
+                                  'Read their letter  💌',
+                                ),
                                 onPressed: onViewPartnerCarta,
                               )
                               .animate()
@@ -1261,7 +1324,10 @@ class _CelebrationPage extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Text(
-                            'Esperando su respuesta...',
+                            context.tr(
+                              'Esperando su respuesta...',
+                              'Waiting for their answer...',
+                            ),
                             style: AetheraTokens.bodySmall(
                               color: AetheraTokens.dusk,
                             ),
@@ -1269,7 +1335,10 @@ class _CelebrationPage extends StatelessWidget {
                         ),
 
                       AetheraButton(
-                        label: 'Volver al universo',
+                        label: context.tr(
+                          'Volver al universo',
+                          'Back to universe',
+                        ),
                         variant: AetheraButtonVariant.outlined,
                         onPressed: onClose,
                       ).animate().fadeIn(delay: 1300.ms),
@@ -1340,7 +1409,10 @@ class _PartnerCartaPage extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Su carta para ti',
+                              context.tr(
+                                'Su carta para ti',
+                                'Their letter for you',
+                              ),
                               style: AetheraTokens.displaySmall().copyWith(
                                 color: AetheraTokens.roseQuartz,
                               ),
@@ -1416,7 +1488,10 @@ class _PartnerCartaPage extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        'Con gratitud',
+                                        context.tr(
+                                          'Con gratitud',
+                                          'With gratitude',
+                                        ),
                                         style: AetheraTokens.labelLarge(
                                           color: AetheraTokens.roseQuartz,
                                         ),
@@ -1459,7 +1534,7 @@ class _PartnerCartaPage extends StatelessWidget {
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: Text(
-                                    'Con amor  ✦',
+                                    context.tr('Con amor  ✦', 'With love  ✦'),
                                     style: AetheraTokens.bodyMedium(
                                       color: AetheraTokens.roseQuartz,
                                     ),
@@ -1476,7 +1551,10 @@ class _PartnerCartaPage extends StatelessWidget {
 
                     if (reveal > 0.9)
                       AetheraButton(
-                        label: 'Volver al universo',
+                        label: context.tr(
+                          'Volver al universo',
+                          'Back to universe',
+                        ),
                         variant: AetheraButtonVariant.outlined,
                         onPressed: onClose,
                       ).animate().fadeIn(duration: 400.ms),
@@ -1512,18 +1590,21 @@ class _WaitingForPartner extends StatelessWidget {
               ).animate().fadeIn().scale(curve: Curves.elasticOut),
               const SizedBox(height: 28),
               Text(
-                'Aún no ha respondido',
+                context.tr('Aún no ha respondido', 'No answer yet'),
                 style: AetheraTokens.displaySmall(),
               ).animate().fadeIn(delay: 300.ms),
               const SizedBox(height: 12),
               Text(
-                'Cuando complete su ritual, su carta aparecerá aquí.',
+                context.tr(
+                  'Cuando complete su ritual, su carta aparecerá aquí.',
+                  'When ritual is completed, their letter will appear here.',
+                ),
                 style: AetheraTokens.bodyMedium(color: AetheraTokens.moonGlow),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 500.ms),
               const SizedBox(height: 48),
               AetheraButton(
-                label: 'Volver',
+                label: context.tr('Volver', 'Back'),
                 variant: AetheraButtonVariant.outlined,
                 onPressed: onClose,
               ).animate().fadeIn(delay: 700.ms),

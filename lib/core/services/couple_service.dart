@@ -4,11 +4,16 @@ import 'package:uuid/uuid.dart';
 import 'package:aethera/shared/models/couple_model.dart';
 
 class CoupleService {
-  final _db = FirebaseFirestore.instance;
-  final _uuid = const Uuid();
+  CoupleService({FirebaseFirestore? firestore, Uuid? uuid})
+      : _db = firestore,
+        _uuid = uuid ?? const Uuid();
+
+  final FirebaseFirestore? _db;
+  FirebaseFirestore get _firestore => _db ?? FirebaseFirestore.instance;
+  final Uuid _uuid;
 
   CollectionReference<Map<String, dynamic>> get _col =>
-      _db.collection('couples');
+      _firestore.collection('couples');
 
   Future<String> _generateUniqueCode() async {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -37,7 +42,7 @@ class CoupleService {
       universeState: UniverseState.initial(),
     );
     await _col.doc(coupleId).set(couple.toMap());
-    await _db
+    await _firestore
         .collection('users')
         .doc(user1Id)
         .update({'coupleId': coupleId});
@@ -59,7 +64,7 @@ class CoupleService {
       throw Exception('Este universo ya tiene pareja');
     }
     await doc.reference.update({'user2Id': user2Id});
-    await _db
+    await _firestore
         .collection('users')
         .doc(user2Id)
         .update({'coupleId': couple.id});

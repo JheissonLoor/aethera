@@ -43,6 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/coverage/
 
 # Firebase sensitive config (local only)
 /lib/firebase_options.dart
@@ -53,3 +54,7 @@ app.*.map.json
 # Local AI assistant context (not part of app source)
 .claude/
 CLAUDE.md
+
+# Reglas Firebase: dependencias y logs locales de pruebas
+/firebase/rules/node_modules/
+/firebase/rules/*-debug.log

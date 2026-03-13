@@ -8,6 +8,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:uuid/uuid.dart';
 import 'package:aethera/core/services/couple_service.dart';
 import 'package:aethera/core/services/offline_sync_queue_service.dart';
+import 'package:aethera/features/universe/domain/universe_flow_helpers.dart';
 import 'package:aethera/shared/models/couple_model.dart';
 import 'package:aethera/shared/models/emotion_model.dart';
 import 'package:aethera/shared/models/memory_model.dart';
@@ -16,6 +17,7 @@ import 'package:aethera/shared/models/time_capsule_model.dart';
 import 'package:aethera/shared/models/daily_question_model.dart';
 import 'package:aethera/shared/models/wish_model.dart';
 import 'package:aethera/core/constants/app_constants.dart';
+import 'package:aethera/core/constants/telemetry_events.dart';
 import 'package:aethera/core/services/presence_service.dart';
 import 'package:aethera/core/services/notification_service.dart';
 import 'package:aethera/core/services/telemetry_service.dart';
@@ -444,17 +446,28 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       payload: payload,
       createdAtMs: DateTime.now().millisecondsSinceEpoch,
     );
-    await _offlineQueue.enqueue(action);
-    await _updatePendingSyncCount();
+    final result = await _offlineQueue.enqueue(action);
+    if (ref.mounted) {
+      state = state.copyWith(pendingSyncActions: result.queueSize);
+    }
     unawaited(
       _trackEvent(
-        'sync_action_queued',
-        parameters: {
-          'action_type': type,
-          'queue_size': state.pendingSyncActions,
-        },
+        TelemetryEvents.syncActionQueued,
+        parameters: {'action_type': type, 'queue_size': result.queueSize},
       ),
     );
+    if (result.droppedCount > 0) {
+      unawaited(
+        _trackEvent(
+          TelemetryEvents.kpiQueueDrop,
+          parameters: {
+            'dropped': result.droppedCount,
+            'remaining': result.queueSize,
+            'drop_reason': 'queue_overflow',
+          },
+        ),
+      );
+    }
   }
 
   Future<void> _executeOrQueue({
@@ -470,7 +483,10 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     try {
       await onlineTask();
       unawaited(
-        _trackEvent('sync_action_sent', parameters: {'action_type': type}),
+        _trackEvent(
+          TelemetryEvents.syncActionSent,
+          parameters: {'action_type': type},
+        ),
       );
     } catch (error, stackTrace) {
       unawaited(
@@ -488,12 +504,24 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         await _enqueueSyncAction(type: type, payload: payload);
         unawaited(
           _trackEvent(
-            'sync_action_requeued',
+            TelemetryEvents.syncActionRequeued,
             parameters: {'action_type': type},
           ),
         );
         return;
       }
+      unawaited(
+        _trackEvent(
+          TelemetryEvents.kpiSyncFailure,
+          parameters: {
+            'stage': 'online_task',
+            'attempted': 1,
+            'failed': 1,
+            'failed_transient': 0,
+            'dropped': 0,
+          },
+        ),
+      );
       rethrow;
     }
   }
@@ -531,7 +559,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
             droppedCount++;
             unawaited(
               _trackEvent(
-                'sync_action_dropped',
+                TelemetryEvents.syncActionDropped,
                 parameters: {'action_type': action.type},
               ),
             );
@@ -553,7 +581,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       await _updatePendingSyncCount();
       unawaited(
         _trackEvent(
-          'sync_queue_flushed',
+          TelemetryEvents.syncQueueFlushed,
           parameters: {
             'attempted': pending.length,
             'success': successCount,
@@ -563,6 +591,33 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
           },
         ),
       );
+      final failedCount = transientFailureCount + droppedCount;
+      if (failedCount > 0) {
+        unawaited(
+          _trackEvent(
+            TelemetryEvents.kpiSyncFailure,
+            parameters: {
+              'stage': 'queue_flush',
+              'attempted': pending.length,
+              'failed': failedCount,
+              'failed_transient': transientFailureCount,
+              'dropped': droppedCount,
+            },
+          ),
+        );
+      }
+      if (droppedCount > 0) {
+        unawaited(
+          _trackEvent(
+            TelemetryEvents.kpiQueueDrop,
+            parameters: {
+              'dropped': droppedCount,
+              'remaining': state.pendingSyncActions,
+              'drop_reason': 'permanent_error',
+            },
+          ),
+        );
+      }
     } finally {
       _isFlushingQueuedActions = false;
     }
@@ -743,7 +798,10 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     required String type,
   }) async {
     final coupleId = _coupleId ?? state.couple?.id;
-    final userId = _myUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    final userId =
+        _myUserId ??
+        state.currentUserId ??
+        FirebaseAuth.instance.currentUser?.uid;
     if (coupleId == null || userId == null) return;
 
     final memory = MemoryModel(
@@ -954,23 +1012,12 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     final normalized = answer.trim();
     if (normalized.isEmpty) return;
 
-    final optimisticAnswers = Map<String, String>.from(round.answers);
-    optimisticAnswers[userId] = normalized;
-    final optimisticRevealAt =
-        optimisticAnswers.length >= 2 && round.revealedAt == null
-            ? DateTime.now()
-            : round.revealedAt;
-    state = state.copyWith(
-      dailyQuestion: DailyQuestionModel(
-        id: round.id,
-        coupleId: round.coupleId,
-        dayKey: round.dayKey,
-        question: round.question,
-        answers: optimisticAnswers,
-        createdAt: round.createdAt,
-        revealedAt: optimisticRevealAt,
-      ),
+    final optimisticRound = aplicarRespuestaDiaria(
+      pregunta: round,
+      userId: userId,
+      respuesta: normalized,
     );
+    state = state.copyWith(dailyQuestion: optimisticRound);
 
     await _executeOrQueue(
       type: 'submitDailyAnswer',
@@ -985,7 +1032,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     unawaited(
       _trackEvent(
         'daily_answer_submitted',
-        parameters: {'revealed': optimisticAnswers.length >= 2},
+        parameters: {'revealed': optimisticRound.isRevealed},
       ),
     );
   }
@@ -997,7 +1044,10 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     String title = '',
   }) async {
     final coupleId = _coupleId ?? state.couple?.id;
-    final userId = _myUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    final userId =
+        _myUserId ??
+        state.currentUserId ??
+        FirebaseAuth.instance.currentUser?.uid;
     final trimmedMessage = message.trim();
     if (coupleId == null || userId == null || trimmedMessage.isEmpty) return;
     if (!unlockAt.isAfter(DateTime.now())) return;
@@ -1035,22 +1085,21 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
 
   /// Abre una cápsula para el usuario actual y devuelve su contenido.
   Future<TimeCapsuleModel?> openTimeCapsule(String capsuleId) async {
-    final userId = _myUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    final userId =
+        _myUserId ??
+        state.currentUserId ??
+        FirebaseAuth.instance.currentUser?.uid;
     if (userId == null || capsuleId.isEmpty) return null;
 
     final capsule = _capsuleById(capsuleId);
-    if (capsule == null || !capsule.isUnlocked) return null;
+    if (capsule == null) return null;
+    final optimisticCapsule = abrirCapsulaOptimista(
+      capsula: capsule,
+      userId: userId,
+    );
+    if (optimisticCapsule == null) return null;
+
     if (!capsule.isOpenedBy(userId)) {
-      final optimisticCapsule = TimeCapsuleModel(
-        id: capsule.id,
-        coupleId: capsule.coupleId,
-        title: capsule.title,
-        message: capsule.message,
-        createdByUserId: capsule.createdByUserId,
-        createdAt: capsule.createdAt,
-        unlockAt: capsule.unlockAt,
-        openedByUserIds: <String>{...capsule.openedByUserIds, userId}.toList(),
-      );
       _replaceCapsule(optimisticCapsule);
 
       try {
@@ -1076,7 +1125,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
           );
           unawaited(
             _trackEvent(
-              'sync_action_requeued',
+              TelemetryEvents.syncActionRequeued,
               parameters: {'action_type': 'openTimeCapsule'},
             ),
           );

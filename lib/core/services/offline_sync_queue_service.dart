@@ -42,8 +42,22 @@ class OfflineSyncAction {
   };
 }
 
+class OfflineEnqueueResult {
+  final int queueSize;
+  final int droppedCount;
+
+  const OfflineEnqueueResult({
+    required this.queueSize,
+    required this.droppedCount,
+  });
+}
+
 class OfflineSyncQueueService {
+  OfflineSyncQueueService({int maxQueueSize = 250})
+    : _maxQueueSize = maxQueueSize;
+
   static const String _storageKey = 'offline_sync_queue_v1';
+  final int _maxQueueSize;
 
   Future<List<OfflineSyncAction>> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -65,10 +79,19 @@ class OfflineSyncQueueService {
     }
   }
 
-  Future<void> enqueue(OfflineSyncAction action) async {
+  Future<OfflineEnqueueResult> enqueue(OfflineSyncAction action) async {
     final actions = (await load()).toList();
     actions.add(action);
+    var droppedCount = 0;
+    if (actions.length > _maxQueueSize) {
+      droppedCount = actions.length - _maxQueueSize;
+      actions.removeRange(0, droppedCount);
+    }
     await _save(actions);
+    return OfflineEnqueueResult(
+      queueSize: actions.length,
+      droppedCount: droppedCount,
+    );
   }
 
   Future<void> removeByIds(Set<String> ids) async {

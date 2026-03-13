@@ -1,0 +1,14 @@
+{
+  "name": "aethera-firebase-rules-tests",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test:unit": "node --test firestore.rules.test.cjs database.rules.test.cjs",
+    "test": "npx firebase emulators:exec --project demo-aethera --config ../../firebase.json \"npm run test:unit\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.2",
+    "firebase": "^10.14.1",
+    "firebase-tools": "^13.30.0"
+  }
+}
