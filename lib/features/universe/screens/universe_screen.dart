@@ -440,7 +440,10 @@ class _TopBar extends ConsumerWidget {
                 _MusicToggleButton(),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: () => context.push(AetheraRoutes.profile),
+                  onTap: () {
+                    HapticsService.selection();
+                    context.push(AetheraRoutes.profile);
+                  },
                   child: Container(
                     width: 28,
                     height: 28,
@@ -2436,38 +2439,61 @@ class _MusicToggleButton extends StatefulWidget {
 
 class _MusicToggleButtonState extends State<_MusicToggleButton> {
   bool _isMuted = false;
+  bool _isPressed = false;
 
   Future<void> _toggle() async {
+    HapticsService.selection();
     final newMuted = !_isMuted;
     setState(() => _isMuted = newMuted);
     await MusicService.instance.setMuted(newMuted);
   }
 
+  void _onTapDown(TapDownDetails _) {
+    setState(() => _isPressed = true);
+  }
+
+  void _onTapUp([TapUpDetails? _]) {
+    if (!_isPressed) return;
+    setState(() => _isPressed = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapUp,
       onTap: _toggle,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color:
-              _isMuted
-                  ? Colors.white.withValues(alpha: 0.03)
-                  : AetheraTokens.auroraTeal.withValues(alpha: 0.08),
-          border: Border.all(
-            color:
-                _isMuted
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : AetheraTokens.auroraTeal.withValues(alpha: 0.3),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.9 : 1,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 120),
+          opacity: _isPressed ? 0.9 : 1,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color:
+                  _isMuted
+                      ? Colors.white.withValues(alpha: 0.03)
+                      : AetheraTokens.auroraTeal.withValues(alpha: 0.08),
+              border: Border.all(
+                color:
+                    _isMuted
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : AetheraTokens.auroraTeal.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Icon(
+              _isMuted ? Icons.music_off_rounded : Icons.music_note_rounded,
+              color: _isMuted ? AetheraTokens.dusk : AetheraTokens.auroraTeal,
+              size: 14,
+            ),
           ),
-        ),
-        child: Icon(
-          _isMuted ? Icons.music_off_rounded : Icons.music_note_rounded,
-          color: _isMuted ? AetheraTokens.dusk : AetheraTokens.auroraTeal,
-          size: 14,
         ),
       ),
     );
