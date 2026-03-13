@@ -200,6 +200,28 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     );
   }
 
+  bool _isPermanentSyncError(Object error) {
+    if (error is UnsupportedError ||
+        error is ArgumentError ||
+        error is FormatException) {
+      return true;
+    }
+
+    if (error is FirebaseException) {
+      const permanentCodes = <String>{
+        'permission-denied',
+        'unauthenticated',
+        'invalid-argument',
+        'failed-precondition',
+        'not-found',
+        'already-exists',
+      };
+      return permanentCodes.contains(error.code.toLowerCase());
+    }
+
+    return false;
+  }
+
   // ── Inicio ─────────────────────────────────────────────────────────────────
 
   Future<void> _init() async {
@@ -488,14 +510,14 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
 
       final processed = <String>{};
       var successCount = 0;
-      var failureCount = 0;
+      var transientFailureCount = 0;
+      var droppedCount = 0;
       for (final action in pending) {
         try {
           await _runQueuedAction(action);
           processed.add(action.id);
           successCount++;
         } catch (error, stackTrace) {
-          failureCount++;
           unawaited(
             _trackNonFatal(
               reason: 'sync_queue_action_failed',
@@ -504,11 +526,24 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
               context: {'action_type': action.type},
             ),
           );
+          if (_isPermanentSyncError(error)) {
+            processed.add(action.id);
+            droppedCount++;
+            unawaited(
+              _trackEvent(
+                'sync_action_dropped',
+                parameters: {'action_type': action.type},
+              ),
+            );
+            continue;
+          }
+
           final connectedSnap = await _rtdb.ref('.info/connected').get();
           final connectedNow = connectedSnap.value == true;
           state = state.copyWith(isSyncConnected: connectedNow);
-          if (!connectedNow) break;
-          processed.add(action.id);
+          transientFailureCount++;
+          // Conserva la acción en cola para reintento posterior.
+          break;
         }
       }
 
@@ -522,7 +557,8 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
           parameters: {
             'attempted': pending.length,
             'success': successCount,
-            'failed': failureCount,
+            'failed_transient': transientFailureCount,
+            'dropped': droppedCount,
             'remaining': state.pendingSyncActions,
           },
         ),
@@ -558,8 +594,11 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       case 'sendPulse':
         await _persistPulseFromPayload(action.payload);
         return;
-      default:
+      case 'openTimeCapsule':
+        await _persistOpenCapsuleFromPayload(action.payload);
         return;
+      default:
+        throw UnsupportedError('Tipo de accion no soportado: ${action.type}');
     }
   }
 
@@ -1002,12 +1041,60 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     final capsule = _capsuleById(capsuleId);
     if (capsule == null || !capsule.isUnlocked) return null;
     if (!capsule.isOpenedBy(userId)) {
-      await _db.collection(AppConstants.colCapsules).doc(capsuleId).update({
-        'openedByUserIds': FieldValue.arrayUnion(<String>[userId]),
-      });
+      final optimisticCapsule = TimeCapsuleModel(
+        id: capsule.id,
+        coupleId: capsule.coupleId,
+        title: capsule.title,
+        message: capsule.message,
+        createdByUserId: capsule.createdByUserId,
+        createdAt: capsule.createdAt,
+        unlockAt: capsule.unlockAt,
+        openedByUserIds: <String>{...capsule.openedByUserIds, userId}.toList(),
+      );
+      _replaceCapsule(optimisticCapsule);
+
+      try {
+        await _executeOrQueue(
+          type: 'openTimeCapsule',
+          payload: {'capsuleId': capsuleId, 'userId': userId},
+          onlineTask:
+              () => _persistOpenCapsule(capsuleId: capsuleId, userId: userId),
+        );
+      } catch (error, stackTrace) {
+        unawaited(
+          _trackNonFatal(
+            reason: 'open_capsule_failed',
+            error: error,
+            stackTrace: stackTrace,
+            context: {'capsule_id': capsuleId},
+          ),
+        );
+        if (!_isPermanentSyncError(error)) {
+          await _enqueueSyncAction(
+            type: 'openTimeCapsule',
+            payload: {'capsuleId': capsuleId, 'userId': userId},
+          );
+          unawaited(
+            _trackEvent(
+              'sync_action_requeued',
+              parameters: {'action_type': 'openTimeCapsule'},
+            ),
+          );
+        }
+        return optimisticCapsule;
+      }
     }
     unawaited(_trackEvent('capsule_opened'));
-    return capsule;
+    return _capsuleById(capsuleId);
+  }
+
+  void _replaceCapsule(TimeCapsuleModel capsule) {
+    final updated =
+        state.capsules
+            .map((item) => item.id == capsule.id ? capsule : item)
+            .toList()
+          ..sort((a, b) => a.unlockAt.compareTo(b.unlockAt));
+    state = state.copyWith(capsules: updated);
   }
 
   Future<void> _persistEmotion(String mood) async {
@@ -1085,6 +1172,15 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         .collection(AppConstants.colCapsules)
         .doc(capsule.id)
         .set(capsule.toMap());
+  }
+
+  Future<void> _persistOpenCapsule({
+    required String capsuleId,
+    required String userId,
+  }) async {
+    await _db.collection(AppConstants.colCapsules).doc(capsuleId).update({
+      'openedByUserIds': FieldValue.arrayUnion(<String>[userId]),
+    });
   }
 
   Future<void> _persistDailyAnswer({
@@ -1218,6 +1314,15 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       'from': userId,
       'at': ServerValue.timestamp,
     });
+  }
+
+  Future<void> _persistOpenCapsuleFromPayload(
+    Map<String, dynamic> payload,
+  ) async {
+    final capsuleId = payload['capsuleId'] as String? ?? '';
+    final userId = payload['userId'] as String? ?? '';
+    if (capsuleId.isEmpty || userId.isEmpty) return;
+    await _persistOpenCapsule(capsuleId: capsuleId, userId: userId);
   }
 
   /// Marca el deseo entrante como visto y cierra el overlay de estrella fugaz.

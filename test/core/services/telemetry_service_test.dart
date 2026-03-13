@@ -117,5 +117,24 @@ void main() {
       expect(sink.initializeCalls, 0);
       expect(sink.events, isEmpty);
     });
+
+    test(
+      'encola eventos previos a init y los despacha al inicializar',
+      () async {
+        final sink = _FakeTelemetrySink();
+        final service = AppTelemetryService(
+          sink: sink,
+          nonFatalRecorder: (_, __, {String? reason}) async {},
+        );
+
+        await service.logEvent('startup_failed', parameters: {'timeout': true});
+        expect(sink.events, isEmpty);
+
+        await service.initialize();
+        expect(sink.events.length, 1);
+        expect(sink.events.first.name, 'startup_failed');
+        expect(sink.events.first.params['timeout'], 1);
+      },
+    );
   });
 }

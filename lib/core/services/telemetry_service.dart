@@ -51,6 +51,13 @@ class FirebaseTelemetrySink implements TelemetrySink {
   }
 }
 
+class _QueuedTelemetryEvent {
+  final String name;
+  final Map<String, Object> parameters;
+
+  const _QueuedTelemetryEvent({required this.name, required this.parameters});
+}
+
 class AppTelemetryService {
   AppTelemetryService({TelemetrySink? sink, NonFatalRecorder? nonFatalRecorder})
     : _sink = sink ?? FirebaseTelemetrySink(),
@@ -64,18 +71,31 @@ class AppTelemetryService {
 
   bool _initialized = false;
   bool _enabled = false;
+  bool _collectBeforeInit = true;
+  static const int _maxQueuedEvents = 40;
+  final List<_QueuedTelemetryEvent> _queuedEvents = <_QueuedTelemetryEvent>[];
 
   bool get isReady => _initialized && _enabled;
 
   Future<void> initialize({bool enabled = true}) async {
-    if (_initialized) return;
     _enabled = enabled;
-    if (!_enabled || kIsWeb) return;
+    _collectBeforeInit = enabled && !kIsWeb;
+
+    if (!_collectBeforeInit) {
+      _queuedEvents.clear();
+      return;
+    }
+
+    if (_initialized) {
+      await _flushQueuedEvents();
+      return;
+    }
 
     try {
       await _sink.setEnabled(enabled);
       await _sink.initialize();
       _initialized = true;
+      await _flushQueuedEvents();
     } catch (_) {
       _initialized = false;
     }
@@ -112,8 +132,6 @@ class AppTelemetryService {
     String name, {
     Map<String, Object?> parameters = const {},
   }) async {
-    if (!isReady) return;
-
     final normalizedName = _normalizeKey(name, fallback: 'app_event');
     final normalizedParams = <String, Object>{};
     for (final entry in parameters.entries) {
@@ -124,8 +142,39 @@ class AppTelemetryService {
       }
     }
 
+    if (!isReady) {
+      _enqueueEvent(
+        _QueuedTelemetryEvent(
+          name: normalizedName,
+          parameters: normalizedParams,
+        ),
+      );
+      return;
+    }
+
+    await _sendEvent(normalizedName, normalizedParams);
+  }
+
+  void _enqueueEvent(_QueuedTelemetryEvent event) {
+    if (!_collectBeforeInit) return;
+    if (_queuedEvents.length >= _maxQueuedEvents) {
+      _queuedEvents.removeAt(0);
+    }
+    _queuedEvents.add(event);
+  }
+
+  Future<void> _flushQueuedEvents() async {
+    if (!isReady || _queuedEvents.isEmpty) return;
+    final pending = List<_QueuedTelemetryEvent>.from(_queuedEvents);
+    _queuedEvents.clear();
+    for (final event in pending) {
+      await _sendEvent(event.name, event.parameters);
+    }
+  }
+
+  Future<void> _sendEvent(String name, Map<String, Object> parameters) async {
     try {
-      await _sink.logEvent(normalizedName, parameters: normalizedParams);
+      await _sink.logEvent(name, parameters: parameters);
     } catch (_) {}
   }
 
