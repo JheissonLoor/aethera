@@ -18,6 +18,7 @@ import 'package:aethera/shared/models/wish_model.dart';
 import 'package:aethera/core/constants/app_constants.dart';
 import 'package:aethera/core/services/presence_service.dart';
 import 'package:aethera/core/services/notification_service.dart';
+import 'package:aethera/core/services/telemetry_service.dart';
 import 'package:aethera/core/utils/streak_utils.dart';
 
 // â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -177,6 +178,27 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
   String? _myUserId;
   String? _coupleId;
   bool _isFlushingQueuedActions = false;
+
+  Future<void> _trackEvent(
+    String name, {
+    Map<String, Object?> parameters = const {},
+  }) async {
+    await AppTelemetryService.instance.logEvent(name, parameters: parameters);
+  }
+
+  Future<void> _trackNonFatal({
+    required String reason,
+    required Object error,
+    required StackTrace stackTrace,
+    Map<String, Object?> context = const {},
+  }) async {
+    await AppTelemetryService.instance.recordNonFatal(
+      reason: reason,
+      error: error,
+      stackTrace: stackTrace,
+      context: context,
+    );
+  }
 
   // â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -353,7 +375,20 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         isUser1: _isUser1,
       );
       _subscribeToPresence();
-    } catch (_) {
+      unawaited(
+        _trackEvent(
+          'universe_loaded',
+          parameters: {'source': 'firebase', 'solo_mode': partnerId.isEmpty},
+        ),
+      );
+    } catch (error, stackTrace) {
+      unawaited(
+        _trackNonFatal(
+          reason: 'universe_init_failed',
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
       _fallbackToMockOrEmpty();
     }
   }
@@ -389,6 +424,15 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     );
     await _offlineQueue.enqueue(action);
     await _updatePendingSyncCount();
+    unawaited(
+      _trackEvent(
+        'sync_action_queued',
+        parameters: {
+          'action_type': type,
+          'queue_size': state.pendingSyncActions,
+        },
+      ),
+    );
   }
 
   Future<void> _executeOrQueue({
@@ -403,12 +447,29 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
 
     try {
       await onlineTask();
-    } catch (_) {
+      unawaited(
+        _trackEvent('sync_action_sent', parameters: {'action_type': type}),
+      );
+    } catch (error, stackTrace) {
+      unawaited(
+        _trackNonFatal(
+          reason: 'sync_online_task_failed',
+          error: error,
+          stackTrace: stackTrace,
+          context: {'action_type': type},
+        ),
+      );
       final connectedSnap = await _rtdb.ref('.info/connected').get();
       final connectedNow = connectedSnap.value == true;
       state = state.copyWith(isSyncConnected: connectedNow);
       if (!connectedNow) {
         await _enqueueSyncAction(type: type, payload: payload);
+        unawaited(
+          _trackEvent(
+            'sync_action_requeued',
+            parameters: {'action_type': type},
+          ),
+        );
         return;
       }
       rethrow;
@@ -426,11 +487,23 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       }
 
       final processed = <String>{};
+      var successCount = 0;
+      var failureCount = 0;
       for (final action in pending) {
         try {
           await _runQueuedAction(action);
           processed.add(action.id);
-        } catch (_) {
+          successCount++;
+        } catch (error, stackTrace) {
+          failureCount++;
+          unawaited(
+            _trackNonFatal(
+              reason: 'sync_queue_action_failed',
+              error: error,
+              stackTrace: stackTrace,
+              context: {'action_type': action.type},
+            ),
+          );
           final connectedSnap = await _rtdb.ref('.info/connected').get();
           final connectedNow = connectedSnap.value == true;
           state = state.copyWith(isSyncConnected: connectedNow);
@@ -443,6 +516,17 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         await _offlineQueue.removeByIds(processed);
       }
       await _updatePendingSyncCount();
+      unawaited(
+        _trackEvent(
+          'sync_queue_flushed',
+          parameters: {
+            'attempted': pending.length,
+            'success': successCount,
+            'failed': failureCount,
+            'remaining': state.pendingSyncActions,
+          },
+        ),
+      );
     } finally {
       _isFlushingQueuedActions = false;
     }
@@ -518,7 +602,15 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         if (snap.exists) return;
         tx.set(ref, question.toMap());
       });
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      unawaited(
+        _trackNonFatal(
+          reason: 'daily_question_seed_failed',
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
   }
 
   String _dailyQuestionDocId(String coupleId, String today) =>
@@ -603,6 +695,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       payload: {'mood': mood},
       onlineTask: () => _persistEmotion(mood),
     );
+    unawaited(_trackEvent('emotion_updated', parameters: {'mood': mood}));
   }
 
   Future<void> addMemory({
@@ -642,6 +735,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       },
       onlineTask: () => _persistMemory(memory),
     );
+    unawaited(_trackEvent('memory_added', parameters: {'memory_type': type}));
   }
 
   Future<void> addGoal({
@@ -679,6 +773,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       },
       onlineTask: () => _persistGoal(goal),
     );
+    unawaited(_trackEvent('goal_added', parameters: {'symbol': symbol}));
   }
 
   Future<void> updateGoalProgress(String goalId, double newProgress) async {
@@ -714,6 +809,12 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
             progress: clamped,
           ),
     );
+    unawaited(
+      _trackEvent(
+        'goal_progress_updated',
+        parameters: {'completed': isNowCompleted, 'progress': clamped},
+      ),
+    );
   }
 
   Future<void> sendPulse() async {
@@ -726,6 +827,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       payload: {'coupleId': coupleId, 'userId': userId},
       onlineTask: () => _presence.sendPulse(),
     );
+    unawaited(_trackEvent('pulse_sent'));
   }
 
   /// Joins a partner's universe using their invite code.
@@ -757,9 +859,18 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       _pulseSub = null;
       state = const UniverseAppState(isLoading: true);
       await _init();
+      unawaited(_trackEvent('pair_join_success'));
       return null;
-    } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+    } catch (error, stackTrace) {
+      unawaited(
+        _trackNonFatal(
+          reason: 'pair_join_failed',
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
+      unawaited(_trackEvent('pair_join_failed'));
+      return error.toString().replaceFirst('Exception: ', '');
     }
   }
 
@@ -790,6 +901,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
             createdAtMs: createdAt,
           ),
     );
+    unawaited(_trackEvent('wish_sent'));
   }
 
   Future<void> submitDailyQuestionAnswer(String answer) async {
@@ -830,6 +942,12 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
             userId: userId,
             answer: normalized,
           ),
+    );
+    unawaited(
+      _trackEvent(
+        'daily_answer_submitted',
+        parameters: {'revealed': optimisticAnswers.length >= 2},
+      ),
     );
   }
 
@@ -873,6 +991,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
       },
       onlineTask: () => _persistCapsule(capsule),
     );
+    unawaited(_trackEvent('capsule_created'));
   }
 
   /// Opens a time capsule for the current user and returns its content.
@@ -887,6 +1006,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         'openedByUserIds': FieldValue.arrayUnion(<String>[userId]),
       });
     }
+    unawaited(_trackEvent('capsule_opened'));
     return capsule;
   }
 
@@ -1106,6 +1226,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     if (wish == null) return;
     state = state.copyWith(clearIncomingWish: true);
     await _db.collection('wishes').doc(wish.id).update({'seen': true});
+    unawaited(_trackEvent('wish_seen'));
   }
 
   void dismissCosmicEventCutscene() {
