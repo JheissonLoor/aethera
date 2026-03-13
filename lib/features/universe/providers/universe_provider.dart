@@ -21,7 +21,7 @@ import 'package:aethera/core/services/notification_service.dart';
 import 'package:aethera/core/services/telemetry_service.dart';
 import 'package:aethera/core/utils/streak_utils.dart';
 
-// â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Estado ───────────────────────────────────────────────────────────────────
 
 class UniverseAppState {
   final CoupleModel? couple;
@@ -140,7 +140,7 @@ class UniverseAppState {
   );
 }
 
-// â”€â”€â”€ Notifier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Notificador ──────────────────────────────────────────────────────────────
 
 class UniverseNotifier extends Notifier<UniverseAppState> {
   @override
@@ -200,7 +200,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     );
   }
 
-  // â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Inicio ─────────────────────────────────────────────────────────────────
 
   Future<void> _init() async {
     _sessionPointsAwarded = false;
@@ -285,7 +285,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
                     cosmicEventName =
                         memory.title.isNotEmpty
                             ? memory.title
-                            : 'Evento CÃ³smico';
+                            : 'Evento Cósmico';
                     cosmicEventMemoryId = memory.id;
                   }
                   continue;
@@ -618,7 +618,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
 
   String _preguntaParaDia(String today) {
     final pool = AppConstants.preguntasDiarias;
-    if (pool.isEmpty) return 'Â¿CÃ³mo te sentiste hoy en nuestra relaciÃ³n?';
+    if (pool.isEmpty) return '¿Cómo te sentiste hoy en nuestra relación?';
     final index = _hashEstable(today) % pool.length;
     return pool[index];
   }
@@ -666,7 +666,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     });
   }
 
-  // â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Acciones ───────────────────────────────────────────────────────────────
 
   Future<void> updateEmotion(String mood) async {
     if (state.couple == null) return;
@@ -830,12 +830,12 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     unawaited(_trackEvent('pulse_sent'));
   }
 
-  /// Joins a partner's universe using their invite code.
-  /// Used when the user is in solo mode and wants to connect with a partner.
-  /// Returns an error string on failure, or null on success.
+  /// Se une al universo de la pareja usando su código de invitación.
+  /// Se usa cuando el usuario está en modo solo y quiere conectarse.
+  /// Devuelve un mensaje de error en caso de fallo, o null en éxito.
   Future<String?> joinPartner(String inviteCode) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return 'No hay sesiÃ³n activa';
+    if (user == null) return 'No hay sesión activa';
     try {
       await _coupleService.joinCouple(inviteCode, user.uid);
       // Re-initialize to pick up new couple streams
@@ -874,7 +874,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     }
   }
 
-  /// Sends a wish/message that flies as a shooting star to the partner's universe.
+  /// Envía un deseo que viaja como estrella fugaz al universo de la pareja.
   Future<void> sendWish(String message) async {
     final coupleId = _coupleId ?? state.couple?.id;
     final userId = _myUserId ?? state.currentUserId;
@@ -951,7 +951,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     );
   }
 
-  /// Creates a new time capsule that unlocks in the future.
+  /// Crea una cápsula del tiempo que se desbloquea en el futuro.
   Future<void> createTimeCapsule({
     required String message,
     required DateTime unlockAt,
@@ -994,7 +994,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     unawaited(_trackEvent('capsule_created'));
   }
 
-  /// Opens a time capsule for the current user and returns its content.
+  /// Abre una cápsula para el usuario actual y devuelve su contenido.
   Future<TimeCapsuleModel?> openTimeCapsule(String capsuleId) async {
     final userId = _myUserId ?? FirebaseAuth.instance.currentUser?.uid;
     if (userId == null || capsuleId.isEmpty) return null;
@@ -1220,7 +1220,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     });
   }
 
-  /// Marks the incoming wish as seen â€” removes the shooting star overlay.
+  /// Marca el deseo entrante como visto y cierra el overlay de estrella fugaz.
   Future<void> markWishSeen() async {
     final wish = state.incomingWish;
     if (wish == null) return;
@@ -1233,7 +1233,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     state = state.copyWith(clearCosmicEvent: true);
   }
 
-  /// Increments the connection streak if both users checked in today.
+  /// Incrementa la racha si ambas personas hicieron check-in hoy.
   Future<void> _tryIncrementStreak() async {
     final coupleId = _coupleId ?? state.couple?.id;
     if (coupleId == null) return;
@@ -1284,7 +1284,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
     }
   }
 
-  // â”€â”€ Fallback mock data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Datos mock de respaldo ─────────────────────────────────────────────────
 
   void _fallbackToMockOrEmpty() {
     if (kDebugMode) {
@@ -1342,7 +1342,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         GoalModel(
           id: uuid.v4(),
           coupleId: 'couple_demo',
-          title: 'Encontrarnos en ParÃ­s',
+          title: 'Encontrarnos en París',
           description: 'Nuestro primer reencuentro.',
           targetDate: DateTime(2025, 12, 1),
           progress: 0.6,
@@ -1367,7 +1367,7 @@ class UniverseNotifier extends Notifier<UniverseAppState> {
         dayKey: dayKey(DateTime.now()),
         question: _preguntaParaDia(dayKey(DateTime.now())),
         answers: const <String, String>{
-          'user1': 'Hoy me acordÃ© de ti cuando vi el atardecer.',
+          'user1': 'Hoy me acordé de ti cuando vi el atardecer.',
         },
         createdAt: DateTime.now(),
       ),

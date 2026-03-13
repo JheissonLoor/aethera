@@ -1553,10 +1553,10 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Â¿CÃ³mo te sientes?', style: AetheraTokens.displaySmall()),
+            Text('¿Cómo te sientes?', style: AetheraTokens.displaySmall()),
             const SizedBox(height: 6),
             Text(
-              'Tu universo reflejarÃ¡ lo que hay en tu corazÃ³n.',
+              'Tu universo reflejará lo que hay en tu corazón.',
               style: AetheraTokens.bodyMedium(color: AetheraTokens.moonGlow),
               textAlign: TextAlign.center,
             ),
@@ -1667,11 +1667,11 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
   bool _isSaving = false;
 
   static const _types = [
-    ('constellation', 'â­', 'ConstelaciÃ³n'),
-    ('tree', 'ðŸŒ³', 'Ãrbol'),
-    ('lighthouse', 'ðŸ®', 'Faro'),
-    ('bridge', 'ðŸŒ‰', 'Puente'),
-    ('island', 'ðŸï¸', 'Isla'),
+    ('constellation', '⭐', 'Constelación'),
+    ('tree', '🌳', 'Árbol'),
+    ('lighthouse', '🏮', 'Faro'),
+    ('bridge', '🌉', 'Puente'),
+    ('island', '🏝️', 'Isla'),
   ];
 
   @override
@@ -1707,7 +1707,7 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
             Row(
               children: [
                 const Text(
-                  'âœ¦',
+                  '✦',
                   style: TextStyle(
                     color: AetheraTokens.auroraTeal,
                     fontSize: 18,
@@ -1781,7 +1781,7 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
 
             _glassField(
               controller: _titleCtrl,
-              hint: 'TÃ­tulo del recuerdo...',
+              hint: 'Título del recuerdo...',
               maxLines: 1,
             ),
 
@@ -1789,14 +1789,14 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
 
             _glassField(
               controller: _descCtrl,
-              hint: 'CuÃ©ntame sobre este momento...',
+              hint: 'Cuéntame sobre este momento...',
               maxLines: 3,
             ),
 
             const SizedBox(height: 24),
 
             AetheraButton(
-              label: 'Guardar memoria  âœ¦',
+              label: 'Guardar memoria  ✦',
               isLoading: _isSaving,
               onPressed: _save,
             ),
@@ -1861,11 +1861,11 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
   bool _isSaving = false;
 
   static const _symbols = [
-    ('lighthouse', 'ðŸ®', 'Faro'),
-    ('castle', 'ðŸ°', 'Castillo'),
-    ('mountain', 'â›°ï¸', 'MontaÃ±a'),
-    ('island', 'ðŸï¸', 'Isla'),
-    ('bridge', 'ðŸŒ‰', 'Puente'),
+    ('lighthouse', '🏮', 'Faro'),
+    ('castle', '🏰', 'Castillo'),
+    ('mountain', '⛰️', 'Montaña'),
+    ('island', '🏝️', 'Isla'),
+    ('bridge', '🌉', 'Puente'),
   ];
 
   @override
@@ -1923,7 +1923,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
           children: [
             Row(
               children: [
-                const Text('ðŸŽ¯', style: TextStyle(fontSize: 18)),
+                const Text('🎯', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 10),
                 Text('Nueva meta', style: AetheraTokens.displaySmall()),
               ],
@@ -1992,7 +1992,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
 
             _glassField(
               controller: _titleCtrl,
-              hint: 'TÃ­tulo de la meta...',
+              hint: 'Título de la meta...',
               maxLines: 1,
             ),
 
@@ -2000,7 +2000,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
 
             _glassField(
               controller: _descCtrl,
-              hint: 'DescrÃ­bela con detalle...',
+              hint: 'Descríbela con detalle...',
               maxLines: 2,
             ),
 
@@ -2022,7 +2022,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
                 ),
                 child: Row(
                   children: [
-                    const Text('ðŸ“…', style: TextStyle(fontSize: 16)),
+                    const Text('📅', style: TextStyle(fontSize: 16)),
                     const SizedBox(width: 12),
                     Text(
                       'Fecha objetivo: ${_targetDate.day}/${_targetDate.month}/${_targetDate.year}',
@@ -2044,7 +2044,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
             const SizedBox(height: 24),
 
             AetheraButton(
-              label: 'Crear meta  ðŸŽ¯',
+              label: 'Crear meta  🎯',
               isLoading: _isSaving,
               onPressed: _save,
             ),
@@ -2124,17 +2124,17 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
   String _iconForSymbol(String symbol) {
     switch (symbol) {
       case 'lighthouse':
-        return 'ðŸ®';
+        return '🏮';
       case 'bridge':
-        return 'ðŸŒ‰';
+        return '🌉';
       case 'island':
-        return 'ðŸï¸';
+        return '🏝️';
       case 'mountain':
-        return 'â›°ï¸';
+        return '⛰️';
       case 'castle':
-        return 'ðŸ°';
+        return '🏰';
       default:
-        return 'ðŸ›ï¸';
+        return '🏛️';
     }
   }
 
@@ -2191,9 +2191,9 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
             Row(
               children: [
                 _StatChip(
-                  icon: 'ðŸ“…',
+                  icon: '📅',
                   label:
-                      isCompleted ? 'Completada' : '$_daysLeft dÃ­as restantes',
+                      isCompleted ? 'Completada' : '$_daysLeft días restantes',
                   color:
                       isCompleted
                           ? AetheraTokens.goldenDawn
@@ -2201,7 +2201,7 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
                 ),
                 const SizedBox(width: 10),
                 _StatChip(
-                  icon: 'âœ¦',
+                  icon: '✦',
                   label: '$progressPercent% completado',
                   color: accentColor,
                 ),
@@ -2282,10 +2282,10 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('ðŸ†', style: TextStyle(fontSize: 20)),
+                    const Text('🏆', style: TextStyle(fontSize: 20)),
                     const SizedBox(width: 10),
                     Text(
-                      'Â¡Meta cumplida! +20 conexiÃ³n',
+                      '¡Meta cumplida! +20 conexión',
                       style: AetheraTokens.labelLarge(
                         color: AetheraTokens.goldenDawn,
                       ),
@@ -2300,7 +2300,7 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
               AetheraButton(
                 label:
                     _progress >= 1.0
-                        ? 'Â¡Completar meta! ðŸ†'
+                        ? '¡Completar meta! 🏆'
                         : 'Guardar progreso',
                 isLoading: _isSaving,
                 onPressed: _save,
@@ -2362,12 +2362,12 @@ class _NewMemoryToast extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'âœ¦',
+              '✦',
               style: TextStyle(color: AetheraTokens.auroraTeal, fontSize: 12),
             ),
             const SizedBox(width: 8),
             Text(
-              'Nueva memoria aÃ±adida al universo',
+              'Nueva memoria añadida al universo',
               style: AetheraTokens.labelSmall(color: AetheraTokens.auroraTeal),
             ),
           ],
@@ -2573,19 +2573,19 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
   String _emotionLabel(String mood) {
     switch (mood) {
       case 'joy':
-        return 'AlegrÃ­a âœ¨';
+        return 'Alegría ✨';
       case 'love':
-        return 'Amor ðŸ’•';
+        return 'Amor 💕';
       case 'peace':
-        return 'Paz ðŸŒ¿';
+        return 'Paz 🌿';
       case 'longing':
-        return 'Anhelo ðŸŒ™';
+        return 'Anhelo 🌙';
       case 'melancholy':
-        return 'MelancolÃ­a ðŸŒŒ';
+        return 'Melancolía 🌌';
       case 'anxious':
-        return 'Angustia ðŸŒŠ';
+        return 'Angustia 🌊';
       default:
-        return 'Neutral âœ¦';
+        return 'Neutral ✦';
     }
   }
 
@@ -2646,7 +2646,7 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '+${AppConstants.pointsDailyCheckin} conexiÃ³n',
+                              '+${AppConstants.pointsDailyCheckin} conexión',
                               style: AetheraTokens.bodySmall(
                                 color: color.withValues(alpha: 0.8),
                               ),
@@ -2680,7 +2680,7 @@ class _MemoryDetailSheet extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('âœ¦', style: TextStyle(fontSize: 20)),
+              const Text('✦', style: TextStyle(fontSize: 20)),
               const SizedBox(width: 10),
               Expanded(child: Text(title, style: AetheraTokens.displaySmall())),
             ],
@@ -2711,7 +2711,7 @@ class _StreakBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('ðŸ”¥', style: TextStyle(fontSize: 9)),
+          const Text('🔥', style: TextStyle(fontSize: 9)),
           const SizedBox(width: 3),
           Text(
             '$days',
@@ -2773,7 +2773,7 @@ class _WishSheetState extends State<_WishSheet> {
                     ],
                   ).createShader(b),
               child: const Text(
-                'âœ¨',
+                '✨',
                 style: TextStyle(fontSize: 36, color: Colors.white),
               ),
             ),
@@ -2804,7 +2804,7 @@ class _WishSheetState extends State<_WishSheet> {
                 maxLength: 120,
                 style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
                 decoration: InputDecoration(
-                  hintText: 'Te pienso, te extraÃ±o, te amo...',
+                  hintText: 'Te pienso, te extraño, te amo...',
                   hintStyle: AetheraTokens.bodyMedium(
                     color: AetheraTokens.moonGlow.withValues(alpha: 0.4),
                   ),
@@ -2819,7 +2819,7 @@ class _WishSheetState extends State<_WishSheet> {
             ),
             const SizedBox(height: 20),
             AetheraButton(
-              label: _isSending ? 'Lanzando...' : 'Lanzar deseo  âœ¨',
+              label: _isSending ? 'Lanzando...' : 'Lanzar deseo  ✨',
               isLoading: _isSending,
               onPressed: _send,
             ),
@@ -2947,13 +2947,13 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
                                 ],
                               ).createShader(b),
                           child: const Text(
-                            'âœ¨',
+                            '✨',
                             style: TextStyle(fontSize: 40, color: Colors.white),
                           ),
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Un deseo llegÃ³ a tu universo',
+                          'Un deseo llegó a tu universo',
                           style: AetheraTokens.bodySmall(
                             color: AetheraTokens.moonGlow,
                           ),
@@ -2999,7 +2999,7 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
                               gradient: AetheraTokens.auroraGradient,
                             ),
                             child: Text(
-                              'Recibido  ðŸ’•',
+                              'Recibido  💕',
                               style: AetheraTokens.labelLarge(
                                 color: AetheraTokens.deepSpace,
                               ),
@@ -3101,7 +3101,7 @@ class _SoloBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Text('ðŸ’«', style: TextStyle(fontSize: 18)),
+            const Text('💫', style: TextStyle(fontSize: 18)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -3114,7 +3114,7 @@ class _SoloBanner extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'CÃ³digo: $inviteCode  â€¢  Toca para conectar',
+                    'Código: $inviteCode  •  Toca para conectar',
                     style: AetheraTokens.bodySmall(
                       color: AetheraTokens.auroraTeal,
                     ),
@@ -3223,7 +3223,7 @@ class _CosmicEventCutsceneOverlayState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'EVENTO CÃ“SMICO DESBLOQUEADO',
+                          'EVENTO CÓSMICO DESBLOQUEADO',
                           style: AetheraTokens.labelLarge(
                             color: AetheraTokens.auroraTeal,
                           ),
@@ -3252,7 +3252,7 @@ class _CosmicEventCutsceneOverlayState
                         ),
                         const SizedBox(height: 14),
                         Text(
-                          '+${AppConstants.pointsSyncRitual} conexiÃ³n â€¢ Reliquia forjada',
+                          '+${AppConstants.pointsSyncRitual} conexión • Reliquia forjada',
                           style: AetheraTokens.bodyMedium(
                             color: AetheraTokens.starlight,
                           ),
