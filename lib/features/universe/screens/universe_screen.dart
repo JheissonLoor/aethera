@@ -22,6 +22,7 @@ import 'package:aethera/features/universe/widgets/shooting_star_overlay.dart';
 import 'package:aethera/core/constants/app_constants.dart';
 import 'package:aethera/shared/models/goal_model.dart';
 import 'package:aethera/shared/models/time_capsule_model.dart';
+import 'package:aethera/core/services/haptics_service.dart';
 import 'package:aethera/core/services/music_service.dart';
 
 String _formatDateTimeLabel(BuildContext context, DateTime dateTime) {
@@ -121,6 +122,19 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
 
           // â”€â”€ Layer 5: Memory objects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           ..._buildMemoryObjects(context, state),
+          if (_showUniverseEmptyState(state))
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: 210,
+              child: _UniverseEmptyStateCard(
+                    onCreateMemory: _showQuickAddMemorySheet,
+                    onCheckIn: _showQuickEmotionSheet,
+                  )
+                  .animate()
+                  .fadeIn(duration: 420.ms, delay: 180.ms)
+                  .slideY(begin: 0.12, end: 0),
+            ),
 
           // â”€â”€ Layer 6: Heartbeat (partner online or received pulse) â”€â”€
           HeartbeatOverlay(
@@ -132,23 +146,32 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               top: 108,
               left: 20,
               right: 20,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (state.dailyQuestion != null)
-                    _DailyQuestionPanel(
-                      state: state,
-                      onAnswer: () => _showDailyQuestionAnswerSheet(state),
-                    ),
-                  if (state.dailyQuestion != null && state.capsules.isNotEmpty)
-                    const SizedBox(height: 8),
-                  if (state.capsules.isNotEmpty)
-                    _TimeCapsuleStatusPanel(
-                      capsules: state.capsules,
-                      currentUserId: state.currentUserId,
-                      onOpenCapsule: _openCapsule,
-                    ),
-                ],
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 320),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: Column(
+                  key: ValueKey(
+                    'panels_${state.dailyQuestion?.id}_${state.capsules.length}',
+                  ),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (state.dailyQuestion != null)
+                      _DailyQuestionPanel(
+                        state: state,
+                        onAnswer: () => _showDailyQuestionAnswerSheet(state),
+                      ),
+                    if (state.dailyQuestion != null &&
+                        state.capsules.isNotEmpty)
+                      const SizedBox(height: 8),
+                    if (state.capsules.isNotEmpty)
+                      _TimeCapsuleStatusPanel(
+                        capsules: state.capsules,
+                        currentUserId: state.currentUserId,
+                        onOpenCapsule: _openCapsule,
+                      ),
+                  ],
+                ),
               ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.15, end: 0),
             ),
 
@@ -285,6 +308,57 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
     );
   }
 
+  bool _showUniverseEmptyState(UniverseAppState state) {
+    if (state.isLoading) return false;
+    if (state.couple?.isSolo == true) return false;
+    return state.memories.isEmpty &&
+        state.goals.isEmpty &&
+        state.capsules.isEmpty &&
+        state.dailyQuestion == null;
+  }
+
+  void _showQuickAddMemorySheet() {
+    HapticsService.light();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder:
+          (_) => _AddMemorySheet(
+            onSave: (title, description, type) async {
+              Navigator.of(context).pop();
+              await ref
+                  .read(universeProvider.notifier)
+                  .addMemory(
+                    title: title,
+                    description: description,
+                    type: type,
+                  );
+              HapticsService.success();
+            },
+          ),
+    );
+  }
+
+  void _showQuickEmotionSheet() {
+    HapticsService.selection();
+    final currentMood = ref.read(universeProvider).couple?.user1Emotion?.mood;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder:
+          (_) => _EmotionCheckInSheet(
+            currentMood: currentMood,
+            onSelect: (mood) {
+              Navigator.of(context).pop();
+              ref.read(universeProvider.notifier).updateEmotion(mood);
+              HapticsService.success();
+            },
+          ),
+    );
+  }
+
   void _showDailyQuestionAnswerSheet(UniverseAppState state) {
     final dailyQuestion = state.dailyQuestion;
     if (dailyQuestion == null) return;
@@ -302,6 +376,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               await ref
                   .read(universeProvider.notifier)
                   .submitDailyQuestionAnswer(answer);
+              HapticsService.success();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Respuesta guardada.')),
@@ -313,16 +388,19 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
   }
 
   Future<void> _openCapsule(TimeCapsuleModel capsule) async {
+    HapticsService.light();
     final opened = await ref
         .read(universeProvider.notifier)
         .openTimeCapsule(capsule.id);
     if (!mounted) return;
     if (opened == null) {
+      HapticsService.selection();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Esta capsula aun no se puede abrir.')),
       );
       return;
     }
+    HapticsService.success();
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -617,6 +695,7 @@ class _BottomBar extends ConsumerWidget {
   }
 
   void _showEmotionSheet(BuildContext context, WidgetRef ref) {
+    HapticsService.selection();
     final currentMood = ref.read(universeProvider).couple?.user1Emotion?.mood;
     showModalBottomSheet(
       context: context,
@@ -628,12 +707,14 @@ class _BottomBar extends ConsumerWidget {
             onSelect: (mood) {
               Navigator.of(context).pop();
               ref.read(universeProvider.notifier).updateEmotion(mood);
+              HapticsService.success();
             },
           ),
     );
   }
 
   void _showWishSheet(BuildContext context, WidgetRef ref) {
+    HapticsService.selection();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -643,12 +724,14 @@ class _BottomBar extends ConsumerWidget {
             onSend: (message) async {
               Navigator.of(context).pop();
               await ref.read(universeProvider.notifier).sendWish(message);
+              HapticsService.success();
             },
           ),
     );
   }
 
   void _showAddMemorySheet(BuildContext context, WidgetRef ref) {
+    HapticsService.selection();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -664,12 +747,14 @@ class _BottomBar extends ConsumerWidget {
                     description: description,
                     type: type,
                   );
+              HapticsService.success();
             },
           ),
     );
   }
 
   void _showCreateCapsuleSheet(BuildContext context, WidgetRef ref) {
+    HapticsService.selection();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -685,6 +770,7 @@ class _BottomBar extends ConsumerWidget {
                     message: message,
                     unlockAt: unlockAt,
                   );
+              HapticsService.success();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Capsula enviada al futuro.')),
@@ -712,7 +798,7 @@ class _BottomBar extends ConsumerWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
+class _ActionButton extends StatefulWidget {
   final String icon;
   final String label;
   final VoidCallback onTap;
@@ -724,20 +810,125 @@ class _ActionButton extends StatelessWidget {
   });
 
   @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton> {
+  bool _pressed = false;
+
+  void _onTapDown(TapDownDetails _) {
+    setState(() => _pressed = true);
+    HapticsService.light();
+  }
+
+  void _onTapUp([TapUpDetails? _]) {
+    if (!_pressed) return;
+    setState(() => _pressed = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        height: 54,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 4),
-            Text(label, style: AetheraTokens.labelSmall()),
-          ],
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapUp,
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.93 : 1,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 120),
+          opacity: _pressed ? 0.9 : 1,
+          child: SizedBox(
+            height: 54,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(widget.icon, style: const TextStyle(fontSize: 22)),
+                const SizedBox(height: 4),
+                Text(widget.label, style: AetheraTokens.labelSmall()),
+              ],
+            ),
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _UniverseEmptyStateCard extends StatelessWidget {
+  final VoidCallback onCreateMemory;
+  final VoidCallback onCheckIn;
+
+  const _UniverseEmptyStateCard({
+    required this.onCreateMemory,
+    required this.onCheckIn,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AetheraGlassPanel(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  AetheraTokens.auroraTeal.withValues(alpha: 0.32),
+                  AetheraTokens.nebulaPurple.withValues(alpha: 0.22),
+                ],
+              ),
+              border: Border.all(
+                color: AetheraTokens.auroraTeal.withValues(alpha: 0.35),
+              ),
+            ),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              color: AetheraTokens.starlight,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Tu universo esta listo para empezar',
+            style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Crea tu primera memoria o registra como te sientes para encender la experiencia.',
+            style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: AetheraButton(
+                  label: 'Crear memoria',
+                  onPressed: onCreateMemory,
+                  width: double.infinity,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: AetheraButton(
+                  label: 'Check-in',
+                  variant: AetheraButtonVariant.outlined,
+                  onPressed: onCheckIn,
+                  width: double.infinity,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -2321,6 +2512,7 @@ class _PulseFABState extends State<_PulseFAB>
   }
 
   Future<void> _handleTap() async {
+    HapticsService.medium();
     widget.onTap();
     _ctrl.forward(from: 0);
   }
