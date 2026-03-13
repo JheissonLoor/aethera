@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:aethera/core/services/telemetry_service.dart';
 
 /// ChangeNotifier used as GoRouter's [refreshListenable].
 /// Tracks auth state + whether the current user has a coupleId.
@@ -45,16 +46,31 @@ class AppStateNotifier extends ChangeNotifier {
     _user = user;
     if (user != null) {
       try {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+        final doc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get();
         _coupleId = doc.data()?['coupleId'] as String?;
       } catch (_) {
         _coupleId = null;
       }
+
+      unawaited(
+        AppTelemetryService.instance.setUserContext(
+          userId: user.uid,
+          coupleId: _coupleId,
+        ),
+      );
+      unawaited(
+        AppTelemetryService.instance.logEvent(
+          'auth_session_active',
+          parameters: {'has_couple': _coupleId?.isNotEmpty == true},
+        ),
+      );
     } else {
       _coupleId = null;
+      unawaited(AppTelemetryService.instance.logEvent('auth_session_closed'));
     }
     _authLoaded = true;
     notifyListeners();

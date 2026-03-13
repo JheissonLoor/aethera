@@ -8,6 +8,7 @@ import 'package:aethera/features/ritual/screens/ritual_screen.dart';
 import 'package:aethera/features/onboarding/onboarding_screen.dart';
 import 'package:aethera/features/profile/profile_screen.dart';
 import 'package:aethera/core/providers/app_state_notifier.dart';
+import 'package:aethera/core/services/telemetry_service.dart';
 
 abstract class AetheraRoutes {
   static const String splash = '/';
@@ -24,65 +25,100 @@ final appRouter = GoRouter(
   debugLogDiagnostics: false,
   refreshListenable: appStateNotifier,
   redirect: _redirect,
+  observers: [TelemetryNavigationObserver()],
   routes: [
     GoRoute(
       path: AetheraRoutes.splash,
       name: 'splash',
-      pageBuilder: (context, state) =>
-          _fadeTransition(state: state, child: const SplashScreen()),
+      pageBuilder:
+          (context, state) => _fadeTransition(
+            state: state,
+            routeName: 'splash',
+            child: const SplashScreen(),
+          ),
     ),
     GoRoute(
       path: AetheraRoutes.auth,
       name: 'auth',
-      pageBuilder: (context, state) =>
-          _fadeTransition(state: state, child: const AuthScreen()),
+      pageBuilder:
+          (context, state) => _fadeTransition(
+            state: state,
+            routeName: 'auth',
+            child: const AuthScreen(),
+          ),
     ),
     GoRoute(
       path: AetheraRoutes.pairing,
       name: 'pairing',
-      pageBuilder: (context, state) =>
-          _fadeTransition(state: state, child: const PairingScreen()),
+      pageBuilder:
+          (context, state) => _fadeTransition(
+            state: state,
+            routeName: 'pairing',
+            child: const PairingScreen(),
+          ),
     ),
     GoRoute(
       path: AetheraRoutes.universe,
       name: 'universe',
-      pageBuilder: (context, state) =>
-          _fadeTransition(state: state, child: const UniverseScreen()),
+      pageBuilder:
+          (context, state) => _fadeTransition(
+            state: state,
+            routeName: 'universe',
+            child: const UniverseScreen(),
+          ),
     ),
     GoRoute(
       path: AetheraRoutes.onboarding,
       name: 'onboarding',
-      pageBuilder: (context, state) =>
-          _fadeTransition(state: state, child: const OnboardingScreen()),
+      pageBuilder:
+          (context, state) => _fadeTransition(
+            state: state,
+            routeName: 'onboarding',
+            child: const OnboardingScreen(),
+          ),
     ),
     GoRoute(
       path: AetheraRoutes.profile,
       name: 'profile',
-      pageBuilder: (context, state) => CustomTransitionPage(
-        key: state.pageKey,
-        child: const ProfileScreen(),
-        transitionDuration: const Duration(milliseconds: 500),
-        transitionsBuilder: (context, animation, _, child) => SlideTransition(
-          position: Tween(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-          child: child,
-        ),
-      ),
+      pageBuilder:
+          (context, state) => CustomTransitionPage(
+            key: state.pageKey,
+            name: 'profile',
+            child: const ProfileScreen(),
+            transitionDuration: const Duration(milliseconds: 500),
+            transitionsBuilder:
+                (context, animation, _, child) => SlideTransition(
+                  position: Tween(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
+                  child: child,
+                ),
+          ),
     ),
     GoRoute(
       path: AetheraRoutes.ritual,
       name: 'ritual',
-      pageBuilder: (context, state) => CustomTransitionPage(
-        key: state.pageKey,
-        child: const RitualScreen(),
-        transitionDuration: const Duration(milliseconds: 600),
-        transitionsBuilder: (context, animation, _, child) => FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeIn),
-          child: child,
-        ),
-      ),
+      pageBuilder:
+          (context, state) => CustomTransitionPage(
+            key: state.pageKey,
+            name: 'ritual',
+            child: const RitualScreen(),
+            transitionDuration: const Duration(milliseconds: 600),
+            transitionsBuilder:
+                (context, animation, _, child) => FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeIn,
+                  ),
+                  child: child,
+                ),
+          ),
     ),
   ],
 );
@@ -124,10 +160,12 @@ String? _redirect(BuildContext context, GoRouterState state) {
 
 CustomTransitionPage<void> _fadeTransition({
   required GoRouterState state,
+  required String routeName,
   required Widget child,
 }) {
   return CustomTransitionPage<void>(
     key: state.pageKey,
+    name: routeName,
     child: child,
     transitionDuration: const Duration(milliseconds: 800),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {

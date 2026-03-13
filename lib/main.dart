@@ -10,6 +10,7 @@ import 'package:aethera/core/router/app_router.dart';
 import 'package:aethera/core/services/crashlytics_service.dart';
 import 'package:aethera/core/services/music_service.dart';
 import 'package:aethera/core/services/notification_service.dart';
+import 'package:aethera/core/services/telemetry_service.dart';
 import 'package:aethera/core/theme/aethera_tokens.dart';
 import 'package:aethera/l10n/gen/app_localizations.dart';
 
@@ -76,6 +77,12 @@ class _BootstrapGateAppState extends State<_BootstrapGateApp> {
     if (!mounted) return;
 
     if (!firebaseOk) {
+      unawaited(
+        AppTelemetryService.instance.logEvent(
+          'startup_failed',
+          parameters: {'timeout': timedOut},
+        ),
+      );
       setState(() {
         _isReady = false;
         _isLoading = false;
@@ -89,6 +96,9 @@ class _BootstrapGateAppState extends State<_BootstrapGateApp> {
     } catch (_) {
       // Non-fatal: app keeps running if Crashlytics wiring fails.
     }
+
+    await AppTelemetryService.instance.initialize(enabled: !kIsWeb);
+    unawaited(AppTelemetryService.instance.logEvent('startup_ready'));
 
     unawaited(_initializeOptionalServices());
 
@@ -166,6 +176,12 @@ Future<void> _initializeOptionalServices() async {
     await NotificationService.instance.initialize();
   } catch (error, stackTrace) {
     unawaited(
+      AppTelemetryService.instance.logEvent(
+        'notification_init_failed',
+        parameters: {'error': error.runtimeType.toString()},
+      ),
+    );
+    unawaited(
       CrashlyticsService.instance.recordNonFatal(
         error,
         stackTrace,
@@ -178,6 +194,12 @@ Future<void> _initializeOptionalServices() async {
   try {
     await MusicService.instance.initialize();
   } catch (error, stackTrace) {
+    unawaited(
+      AppTelemetryService.instance.logEvent(
+        'music_init_failed',
+        parameters: {'error': error.runtimeType.toString()},
+      ),
+    );
     unawaited(
       CrashlyticsService.instance.recordNonFatal(
         error,
