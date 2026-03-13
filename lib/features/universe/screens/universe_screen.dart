@@ -79,7 +79,6 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
       });
     }
 
-    // Update music volume when emotion changes
     final currentMood = state.combinedMood;
     if (currentMood != _lastMood) {
       _lastMood = currentMood;
@@ -93,22 +92,16 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // â”€â”€ Layer 1: Emotional sky gradient â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           EmotionalSky(combinedMood: state.combinedMood),
 
-          // â”€â”€ Layer 1.5: Nebula clouds (appear at level 2+) â”€â”€â”€â”€â”€â”€â”€â”€
           NebulaLayer(universeLevel: state.universeLevel),
 
-          // â”€â”€ Layer 2: Star field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           const CosmicBackground(),
 
-          // â”€â”€ Layer 2.5: Shooting stars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           const ShootingStarOverlay(),
 
-          // â”€â”€ Layer 3: Aurora (when partner online / high connection)
           AuroraEffect(opacity: state.showAurora ? 1.0 : 0.0),
 
-          // â”€â”€ Layer 4: Horizon + goals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Positioned(
             left: 0,
             right: 0,
@@ -120,7 +113,6 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
             ),
           ),
 
-          // â”€â”€ Layer 5: Memory objects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           ..._buildMemoryObjects(context, state),
           if (_showUniverseEmptyState(state))
             Positioned(
@@ -136,7 +128,6 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
                   .slideY(begin: 0.12, end: 0),
             ),
 
-          // â”€â”€ Layer 6: Heartbeat (partner online or received pulse) â”€â”€
           HeartbeatOverlay(
             isActive: state.partnerOnline || state.receivedPulse,
           ),
@@ -175,7 +166,6 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.15, end: 0),
             ),
 
-          // â”€â”€ Layer 7.5: New memory notification toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           if (state.newMemoryFromPartner)
             Positioned(
               top:
@@ -190,7 +180,6 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
                   .slideY(begin: -0.4, end: 0),
             ),
 
-          // â”€â”€ Emotion feedback overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           if (state.emotionFeedback != null)
             Positioned.fill(
               child: _EmotionRippleOverlay(
@@ -198,7 +187,6 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               ).animate().fadeIn(duration: 300.ms),
             ),
 
-          // â”€â”€ Incoming wish overlay (shooting star from partner) â”€â”€â”€â”€â”€â”€â”€â”€
           if (state.incomingWish != null)
             Positioned.fill(
               child: _IncomingWishOverlay(
@@ -208,7 +196,6 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               ).animate().fadeIn(duration: 400.ms),
             ),
 
-          // Cosmic event cutscene overlay
           if (state.cosmicEventName != null)
             Positioned.fill(
               child: _CosmicEventCutsceneOverlay(
@@ -222,7 +209,6 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               ),
             ),
 
-          // â”€â”€ Solo mode invite banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           if (state.couple?.isSolo == true)
             Positioned(
               left: 20,
@@ -234,16 +220,13 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
                   .slideY(begin: 0.3, end: 0),
             ),
 
-          // â”€â”€ Layer 7: UI Overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           SafeArea(
             child: Column(
               children: [
-                // Top bar
                 _TopBar(
                   state: state,
                 ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2),
                 const Spacer(),
-                // Bottom action bar
                 _BottomBar(state: state, onOpenCapsule: _openCapsule)
                     .animate()
                     .fadeIn(duration: 800.ms, delay: 200.ms)
@@ -409,8 +392,6 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
   }
 }
 
-// â”€â”€â”€ Top Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 class _TopBar extends ConsumerWidget {
   final UniverseAppState state;
   const _TopBar({required this.state});
@@ -424,7 +405,6 @@ class _TopBar extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Row 1: Title + streak badge + compact icon controls
             Row(
               children: [
                 Text('Tu Universo', style: AetheraTokens.displaySmall()),
@@ -464,7 +444,6 @@ class _TopBar extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 10),
-            // Row 2: User orb â”€â”€ connection bar â”€â”€ partner orb + status dot
             Row(
               children: [
                 EmotionOrb(
@@ -597,8 +576,6 @@ class _ConnectionBar extends StatelessWidget {
   }
 }
 
-// â”€â”€â”€ Horizon Layer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 class _HorizonLayer extends StatelessWidget {
   final UniverseAppState state;
   final void Function(GoalModel)? onGoalTap;
@@ -608,7 +585,6 @@ class _HorizonLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Horizon glow line
         Positioned(
           left: 0,
           right: 0,
@@ -627,7 +603,6 @@ class _HorizonLayer extends StatelessWidget {
             ),
           ),
         ),
-        // Goal structures on horizon
         Positioned.fill(
           child: GoalHorizon(goals: state.goals, onGoalTap: onGoalTap),
         ),
@@ -635,8 +610,6 @@ class _HorizonLayer extends StatelessWidget {
     );
   }
 }
-
-// â”€â”€â”€ Bottom Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _BottomBar extends ConsumerWidget {
   final UniverseAppState state;
@@ -666,7 +639,6 @@ class _BottomBar extends ConsumerWidget {
                 onTap: () => _showAddMemorySheet(context, ref),
               ),
             ),
-            // Center FAB - send a heartbeat pulse to partner
             _PulseFAB(
               onTap: () => ref.read(universeProvider.notifier).sendPulse(),
             ),
@@ -1537,8 +1509,6 @@ class _OpenedCapsuleSheet extends StatelessWidget {
   }
 }
 
-// â”€â”€â”€ Emotion Check-In Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 class _EmotionCheckInSheet extends StatefulWidget {
   final ValueChanged<String> onSelect;
   final String? currentMood;
@@ -1680,8 +1650,6 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
   }
 }
 
-// â”€â”€â”€ Add Memory Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 class _AddMemorySheet extends StatefulWidget {
   final Future<void> Function(String title, String description, String type)
   onSave;
@@ -1736,7 +1704,6 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header
             Row(
               children: [
                 const Text(
@@ -1753,7 +1720,6 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
 
             const SizedBox(height: 20),
 
-            // Type selector
             SizedBox(
               height: 72,
               child: ListView(
@@ -1813,7 +1779,6 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
 
             const SizedBox(height: 20),
 
-            // Title
             _glassField(
               controller: _titleCtrl,
               hint: 'TÃ­tulo del recuerdo...',
@@ -1822,7 +1787,6 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
 
             const SizedBox(height: 12),
 
-            // Description
             _glassField(
               controller: _descCtrl,
               hint: 'CuÃ©ntame sobre este momento...',
@@ -1873,8 +1837,6 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
     );
   }
 }
-
-// â”€â”€â”€ Add Goal Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _AddGoalSheet extends StatefulWidget {
   final Future<void> Function(
@@ -1959,7 +1921,6 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header
             Row(
               children: [
                 const Text('ðŸŽ¯', style: TextStyle(fontSize: 18)),
@@ -1970,7 +1931,6 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
 
             const SizedBox(height: 20),
 
-            // Symbol selector
             SizedBox(
               height: 76,
               child: ListView(
@@ -2030,7 +1990,6 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
 
             const SizedBox(height: 20),
 
-            // Title
             _glassField(
               controller: _titleCtrl,
               hint: 'TÃ­tulo de la meta...',
@@ -2039,7 +1998,6 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
 
             const SizedBox(height: 12),
 
-            // Description
             _glassField(
               controller: _descCtrl,
               hint: 'DescrÃ­bela con detalle...',
@@ -2048,7 +2006,6 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
 
             const SizedBox(height: 16),
 
-            // Date picker row
             GestureDetector(
               onTap: _pickDate,
               child: Container(
@@ -2129,8 +2086,6 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
   }
 }
 
-// â”€â”€â”€ Goal Detail Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 class _GoalDetailSheet extends StatefulWidget {
   final GoalModel goal;
   final Future<void> Function(double progress) onUpdateProgress;
@@ -2201,7 +2156,6 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Symbol + title
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2234,7 +2188,6 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
 
             const SizedBox(height: 24),
 
-            // Stats row
             Row(
               children: [
                 _StatChip(
@@ -2257,7 +2210,6 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
 
             const SizedBox(height: 24),
 
-            // Progress label
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -2276,7 +2228,6 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
 
             const SizedBox(height: 10),
 
-            // Progress bar track
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
@@ -2289,7 +2240,6 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
 
             const SizedBox(height: 4),
 
-            // Slider
             if (!widget.goal.isCompleted)
               SliderTheme(
                 data: SliderThemeData(
@@ -2310,7 +2260,6 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
                 ),
               ),
 
-            // Completed celebration banner
             if (isCompleted) ...[
               const SizedBox(height: 16),
               Container(
@@ -2396,8 +2345,6 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-// â”€â”€â”€ New Memory Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 class _NewMemoryToast extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -2429,8 +2376,6 @@ class _NewMemoryToast extends StatelessWidget {
     );
   }
 }
-
-// â”€â”€â”€ Music Toggle Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _MusicToggleButton extends StatefulWidget {
   @override
@@ -2499,10 +2444,6 @@ class _MusicToggleButtonState extends State<_MusicToggleButton> {
     );
   }
 }
-
-// â”€â”€â”€ Pulse FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Animated heart button that sends a heartbeat pulse to the partner.
-// Shows a ripple + toast so the sender gets visual confirmation.
 
 class _PulseFAB extends StatefulWidget {
   final VoidCallback onTap;
@@ -2574,8 +2515,6 @@ class _PulseFABState extends State<_PulseFAB>
     );
   }
 }
-
-// â”€â”€â”€ Emotion Ripple Overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _EmotionRippleOverlay extends StatefulWidget {
   final String mood;
@@ -2660,7 +2599,6 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
             (_, __) => Stack(
               fit: StackFit.expand,
               children: [
-                // Ripple circle
                 Center(
                   child: Container(
                     width:
@@ -2673,7 +2611,6 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
                     ),
                   ),
                 ),
-                // Center toast
                 if (_ctrl.value < 0.7)
                   Center(
                     child: Opacity(
@@ -2726,8 +2663,6 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
   }
 }
 
-// â”€â”€â”€ Memory Detail Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 class _MemoryDetailSheet extends StatelessWidget {
   final String title;
   final String description;
@@ -2758,8 +2693,6 @@ class _MemoryDetailSheet extends StatelessWidget {
     );
   }
 }
-
-// â”€â”€â”€ Streak Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _StreakBadge extends StatelessWidget {
   final int days;
@@ -2793,8 +2726,6 @@ class _StreakBadge extends StatelessWidget {
     );
   }
 }
-
-// â”€â”€â”€ Wish Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _WishSheet extends StatefulWidget {
   final Future<void> Function(String message) onSend;
@@ -2832,7 +2763,6 @@ class _WishSheetState extends State<_WishSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Sparkle header
             ShaderMask(
               shaderCallback:
                   (b) => const LinearGradient(
@@ -2859,7 +2789,6 @@ class _WishSheetState extends State<_WishSheet> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            // Message field
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
@@ -2901,10 +2830,8 @@ class _WishSheetState extends State<_WishSheet> {
   }
 }
 
-// â”€â”€â”€ Incoming Wish Overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 class _IncomingWishOverlay extends StatefulWidget {
-  final dynamic wish; // WishModel
+  final dynamic wish; // Modelo de deseo
   final VoidCallback onSeen;
   const _IncomingWishOverlay({required this.wish, required this.onSeen});
 
@@ -2966,18 +2893,16 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Dark scrim
         GestureDetector(
           onTap: _showMessage ? widget.onSeen : null,
           child: Container(color: Colors.black.withValues(alpha: 0.55)),
         ),
 
-        // Shooting star animation
         if (!_showMessage)
           AnimatedBuilder(
             animation: _starCtrl,
             builder: (_, __) {
-              const angleRad = 0.52; // ~30 degrees
+              const angleRad = 0.52; // aprox. 30 grados
               final progress = _starProgress.value;
               final totalDx = size.width * 0.7;
               final totalDy = totalDx * 0.6;
@@ -3000,7 +2925,6 @@ class _IncomingWishOverlayState extends State<_IncomingWishOverlay>
             },
           ),
 
-        // Revealed message panel
         if (_showMessage)
           Center(
             child: ScaleTransition(
@@ -3120,19 +3044,16 @@ class _WishStarPainter extends CustomPainter {
           ).createShader(Rect.fromPoints(tail, head));
     canvas.drawLine(tail, head, linePaint);
 
-    // Bright head
     canvas.drawCircle(
       head,
       3,
       Paint()..color = Color.fromRGBO(232, 244, 253, alpha),
     );
-    // Teal glow
     canvas.drawCircle(
       head,
       10,
       Paint()..color = Color.fromRGBO(100, 255, 218, alpha * 0.4),
     );
-    // Rose outer glow
     canvas.drawCircle(
       head,
       20,
@@ -3144,8 +3065,6 @@ class _WishStarPainter extends CustomPainter {
   bool shouldRepaint(_WishStarPainter old) =>
       old.head != head || old.alpha != alpha;
 }
-
-// â”€â”€â”€ Solo Mode Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _SoloBanner extends StatelessWidget {
   final String inviteCode;
