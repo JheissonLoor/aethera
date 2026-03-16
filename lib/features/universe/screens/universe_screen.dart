@@ -69,6 +69,10 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
     final state = ref.watch(universeProvider);
     final media = MediaQuery.of(context);
     final compact = media.size.width < 370 || media.size.height < 740;
+    final hasTopPanels =
+        state.dailyQuestion != null || state.capsules.isNotEmpty;
+    final showEmpty = _showUniverseEmptyState(state);
+    final showSoloBanner = state.couple?.isSolo == true;
 
     if (state.cosmicEventMemoryId != null &&
         _lastCutsceneMemoryId != state.cosmicEventMemoryId) {
@@ -120,81 +124,100 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
           ),
 
           ..._buildMemoryObjects(context, state),
-          if (_showUniverseEmptyState(state))
-            Positioned(
-              left: compact ? 16 : 24,
-              right: compact ? 16 : 24,
-              bottom: compact ? 194 : 210,
-              child: _UniverseEmptyStateCard(
-                    onCreateMemory: _showQuickAddMemorySheet,
-                    onCheckIn: _showQuickEmotionSheet,
-                  )
-                  .animate()
-                  .fadeIn(duration: 420.ms, delay: 180.ms)
-                  .slideY(begin: 0.12, end: 0),
+          Positioned(
+            left: compact ? 16 : 24,
+            right: compact ? 16 : 24,
+            bottom: compact ? 194 : 210,
+            child: AnimatedSwitcher(
+              duration: AetheraMotion.screen,
+              switchInCurve: AetheraMotion.enter,
+              switchOutCurve: AetheraMotion.exit,
+              child:
+                  showEmpty
+                      ? _UniverseEmptyStateCard(
+                            key: const ValueKey('empty_visible'),
+                            onCreateMemory: _showQuickAddMemorySheet,
+                            onCheckIn: _showQuickEmotionSheet,
+                          )
+                          .animate()
+                          .fadeIn(duration: 420.ms)
+                          .slideY(begin: 0.12, end: 0)
+                      : const SizedBox.shrink(key: ValueKey('empty_hidden')),
             ),
+          ),
 
           HeartbeatOverlay(
             isActive: state.partnerOnline || state.receivedPulse,
           ),
 
-          if (state.dailyQuestion != null || state.capsules.isNotEmpty)
-            Positioned(
-              top: compact ? 96 : 108,
-              left: compact ? 14 : 20,
-              right: compact ? 14 : 20,
-              child: AnimatedSwitcher(
-                duration: AetheraMotion.sheet,
-                switchInCurve: AetheraMotion.enter,
-                switchOutCurve: AetheraMotion.exit,
-                child: Column(
-                  key: ValueKey(
-                    'panels_${state.dailyQuestion?.id}_${state.capsules.length}',
-                  ),
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (state.dailyQuestion != null)
-                      _DailyQuestionPanel(
-                            state: state,
-                            compact: compact,
-                            onAnswer:
-                                () => _showDailyQuestionAnswerSheet(state),
-                          )
-                          .animate(
+          AnimatedPositioned(
+            duration: AetheraMotion.screen,
+            curve: AetheraMotion.standard,
+            top: compact ? 96 : 108,
+            left: compact ? 14 : 20,
+            right: compact ? 14 : 20,
+            child: IgnorePointer(
+              ignoring: !hasTopPanels,
+              child: AnimatedOpacity(
+                duration: AetheraMotion.screen,
+                curve: AetheraMotion.standard,
+                opacity: hasTopPanels ? 1 : 0,
+                child: AnimatedSwitcher(
+                  duration: AetheraMotion.sheet,
+                  switchInCurve: AetheraMotion.enter,
+                  switchOutCurve: AetheraMotion.exit,
+                  child:
+                      hasTopPanels
+                          ? Column(
                             key: ValueKey(
-                              'dq_${state.dailyQuestion?.id}_${state.hasAnsweredDailyQuestion}_${state.isDailyQuestionRevealed}',
+                              'panels_${state.dailyQuestion?.id}_${state.capsules.length}',
                             ),
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (state.dailyQuestion != null)
+                                _DailyQuestionPanel(
+                                      state: state,
+                                      compact: compact,
+                                      onAnswer:
+                                          () => _showDailyQuestionAnswerSheet(
+                                            state,
+                                          ),
+                                    )
+                                    .animate(
+                                      key: ValueKey(
+                                        'dq_${state.dailyQuestion?.id}_${state.hasAnsweredDailyQuestion}_${state.isDailyQuestionRevealed}',
+                                      ),
+                                    )
+                                    .fadeIn(duration: 360.ms)
+                                    .slideY(begin: -0.08, end: 0),
+                              if (state.dailyQuestion != null &&
+                                  state.capsules.isNotEmpty)
+                                const SizedBox(height: 8),
+                              if (state.capsules.isNotEmpty)
+                                _TimeCapsuleStatusPanel(
+                                      capsules: state.capsules,
+                                      compact: compact,
+                                      currentUserId: state.currentUserId,
+                                      onOpenCapsule: _openCapsule,
+                                    )
+                                    .animate(
+                                      key: ValueKey(
+                                        'tc_${state.capsules.length}_${state.currentUserId}',
+                                      ),
+                                    )
+                                    .fadeIn(delay: 70.ms, duration: 360.ms)
+                                    .slideY(begin: -0.08, end: 0),
+                            ],
                           )
-                          .fadeIn(duration: 360.ms)
-                          .slideY(begin: -0.08, end: 0),
-                    if (state.dailyQuestion != null &&
-                        state.capsules.isNotEmpty)
-                      const SizedBox(height: 8),
-                    if (state.capsules.isNotEmpty)
-                      _TimeCapsuleStatusPanel(
-                            capsules: state.capsules,
-                            compact: compact,
-                            currentUserId: state.currentUserId,
-                            onOpenCapsule: _openCapsule,
-                          )
-                          .animate(
-                            key: ValueKey(
-                              'tc_${state.capsules.length}_${state.currentUserId}',
-                            ),
-                          )
-                          .fadeIn(delay: 70.ms, duration: 360.ms)
-                          .slideY(begin: -0.08, end: 0),
-                  ],
+                          : const SizedBox.shrink(),
                 ),
-              ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.15, end: 0),
+              ),
             ),
+          ),
 
           if (state.newMemoryFromPartner)
             Positioned(
-              top:
-                  (state.dailyQuestion != null || state.capsules.isNotEmpty)
-                      ? (compact ? 248 : 266)
-                      : (compact ? 148 : 160),
+              top: hasTopPanels ? (compact ? 248 : 266) : (compact ? 148 : 160),
               left: 24,
               right: 24,
               child: _NewMemoryToast()
@@ -232,16 +255,26 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               ),
             ),
 
-          if (state.couple?.isSolo == true)
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: compact ? 102 : 110,
-              child: _SoloBanner(inviteCode: state.couple!.inviteCode)
-                  .animate()
-                  .fadeIn(delay: 1200.ms, duration: 600.ms)
-                  .slideY(begin: 0.3, end: 0),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: compact ? 102 : 110,
+            child: AnimatedSwitcher(
+              duration: AetheraMotion.screen,
+              switchInCurve: AetheraMotion.enter,
+              switchOutCurve: AetheraMotion.exit,
+              child:
+                  showSoloBanner
+                      ? _SoloBanner(
+                            key: const ValueKey('solo_banner_on'),
+                            inviteCode: state.couple!.inviteCode,
+                          )
+                          .animate()
+                          .fadeIn(delay: 1200.ms, duration: 600.ms)
+                          .slideY(begin: 0.3, end: 0)
+                      : const SizedBox.shrink(key: ValueKey('solo_banner_off')),
             ),
+          ),
 
           const _CinematicVignetteLayer(),
 
@@ -1490,6 +1523,7 @@ class _UniverseEmptyStateCard extends StatelessWidget {
   final VoidCallback onCheckIn;
 
   const _UniverseEmptyStateCard({
+    super.key,
     required this.onCreateMemory,
     required this.onCheckIn,
   });
@@ -4120,9 +4154,7 @@ class _WishStarPainter extends CustomPainter {
 
 class _SoloBanner extends StatelessWidget {
   final String inviteCode;
-
-  const _SoloBanner({required this.inviteCode});
-
+  const _SoloBanner({super.key, required this.inviteCode});
   @override
   Widget build(BuildContext context) {
     return Semantics(
@@ -4156,7 +4188,11 @@ class _SoloBanner extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Text('💫', style: TextStyle(fontSize: 18)),
+              const Icon(
+                Icons.auto_awesome_rounded,
+                size: 18,
+                color: AetheraTokens.starlight,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -4170,8 +4206,8 @@ class _SoloBanner extends StatelessWidget {
                     ),
                     Text(
                       context.tr(
-                        'Código: $inviteCode  •  Toca para conectar',
-                        'Code: $inviteCode  •  Tap to connect',
+                        'Codigo: $inviteCode - Toca para conectar',
+                        'Code: $inviteCode - Tap to connect',
                       ),
                       style: AetheraTokens.bodySmall(
                         color: AetheraTokens.auroraTeal,
