@@ -57,9 +57,11 @@ GoRouter createAppRouter({
         path: AetheraRoutes.auth,
         name: 'auth',
         pageBuilder:
-            (context, state) => _fadeTransition(
+            (context, state) => _cinematicTransition(
               state: state,
               routeName: 'auth',
+              beginOffset: const Offset(0, 0.04),
+              beginScale: 0.987,
               child: authBuilder?.call(context) ?? const AuthScreen(),
             ),
       ),
@@ -67,9 +69,11 @@ GoRouter createAppRouter({
         path: AetheraRoutes.pairing,
         name: 'pairing',
         pageBuilder:
-            (context, state) => _fadeTransition(
+            (context, state) => _cinematicTransition(
               state: state,
               routeName: 'pairing',
+              beginOffset: const Offset(0, 0.04),
+              beginScale: 0.987,
               child: pairingBuilder?.call(context) ?? const PairingScreen(),
             ),
       ),
@@ -77,9 +81,11 @@ GoRouter createAppRouter({
         path: AetheraRoutes.universe,
         name: 'universe',
         pageBuilder:
-            (context, state) => _fadeTransition(
+            (context, state) => _cinematicTransition(
               state: state,
               routeName: 'universe',
+              beginOffset: const Offset(0, 0.028),
+              beginScale: 0.992,
               child: universeBuilder?.call(context) ?? const UniverseScreen(),
             ),
       ),
@@ -87,9 +93,11 @@ GoRouter createAppRouter({
         path: AetheraRoutes.onboarding,
         name: 'onboarding',
         pageBuilder:
-            (context, state) => _fadeTransition(
+            (context, state) => _cinematicTransition(
               state: state,
               routeName: 'onboarding',
+              beginOffset: const Offset(0, 0.035),
+              beginScale: 0.988,
               child:
                   onboardingBuilder?.call(context) ?? const OnboardingScreen(),
             ),
@@ -103,38 +111,41 @@ GoRouter createAppRouter({
               name: 'profile',
               child: profileBuilder?.call(context) ?? const ProfileScreen(),
               transitionDuration: AetheraMotion.screen,
-              transitionsBuilder:
-                  (context, animation, _, child) => SlideTransition(
-                    position: Tween(
-                      begin: const Offset(0, 1),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) {
+                final curved = CurvedAnimation(
+                  parent: animation,
+                  curve: AetheraMotion.enter,
+                  reverseCurve: AetheraMotion.exit,
+                );
+                return FadeTransition(
+                  opacity: Tween<double>(begin: 0, end: 1).animate(curved),
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.08),
                       end: Offset.zero,
-                    ).animate(
-                      CurvedAnimation(
-                        parent: animation,
-                        curve: AetheraMotion.enter,
-                      ),
-                    ),
+                    ).animate(curved),
                     child: child,
                   ),
+                );
+              },
             ),
       ),
       GoRoute(
         path: AetheraRoutes.ritual,
         name: 'ritual',
         pageBuilder:
-            (context, state) => CustomTransitionPage(
-              key: state.pageKey,
-              name: 'ritual',
+            (context, state) => _cinematicTransition(
+              state: state,
+              routeName: 'ritual',
+              beginOffset: const Offset(0.03, 0),
+              beginScale: 0.986,
+              duration: AetheraMotion.screenSlow,
               child: ritualBuilder?.call(context) ?? const RitualScreen(),
-              transitionDuration: AetheraMotion.screenSlow,
-              transitionsBuilder:
-                  (context, animation, _, child) => FadeTransition(
-                    opacity: CurvedAnimation(
-                      parent: animation,
-                      curve: AetheraMotion.fade,
-                    ),
-                    child: child,
-                  ),
             ),
       ),
     ],
@@ -196,6 +207,43 @@ CustomTransitionPage<void> _fadeTransition({
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: AetheraMotion.fade),
         child: child,
+      );
+    },
+  );
+}
+
+CustomTransitionPage<void> _cinematicTransition({
+  required GoRouterState state,
+  required String routeName,
+  required Widget child,
+  Offset beginOffset = const Offset(0, 0.03),
+  double beginScale = 0.99,
+  Duration? duration,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    name: routeName,
+    child: child,
+    transitionDuration: duration ?? AetheraMotion.screen,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: AetheraMotion.enter,
+        reverseCurve: AetheraMotion.exit,
+      );
+
+      return FadeTransition(
+        opacity: Tween<double>(begin: 0, end: 1).animate(curved),
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: beginOffset,
+            end: Offset.zero,
+          ).animate(curved),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: beginScale, end: 1).animate(curved),
+            child: child,
+          ),
+        ),
       );
     },
   );
