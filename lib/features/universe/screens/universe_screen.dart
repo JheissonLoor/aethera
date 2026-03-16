@@ -1397,8 +1397,25 @@ class _ActionButton extends StatefulWidget {
   State<_ActionButton> createState() => _ActionButtonState();
 }
 
-class _ActionButtonState extends State<_ActionButton> {
+class _ActionButtonState extends State<_ActionButton>
+    with SingleTickerProviderStateMixin {
   bool _pressed = false;
+  late final AnimationController _sheenCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _sheenCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _sheenCtrl.dispose();
+    super.dispose();
+  }
 
   void _onTapDown(TapDownDetails _) {
     setState(() => _pressed = true);
@@ -1453,32 +1470,74 @@ class _ActionButtonState extends State<_ActionButton> {
                   ),
                 ],
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: widget.compact ? 22 : 24,
-                    height: widget.compact ? 22 : 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AetheraTokens.auroraTeal.withValues(
-                        alpha: _pressed ? 0.18 : 0.12,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: _sheenCtrl,
+                          builder: (context, _) {
+                            final progress = Curves.easeInOut.transform(
+                              _sheenCtrl.value,
+                            );
+                            final alignmentX = -1.25 + (progress * 2.5);
+                            return Align(
+                              alignment: Alignment(alignmentX, 0),
+                              child: Transform.rotate(
+                                angle: -0.32,
+                                child: Container(
+                                  width: 18,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.white.withValues(
+                                          alpha: _pressed ? 0.07 : 0.14,
+                                        ),
+                                        Colors.transparent,
+                                      ],
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
-                    child: Icon(
-                      widget.icon,
-                      size: widget.compact ? 13 : 14,
-                      color: AetheraTokens.starlight,
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: widget.compact ? 22 : 24,
+                          height: widget.compact ? 22 : 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AetheraTokens.auroraTeal.withValues(
+                              alpha: _pressed ? 0.18 : 0.12,
+                            ),
+                          ),
+                          child: Icon(
+                            widget.icon,
+                            size: widget.compact ? 13 : 14,
+                            color: AetheraTokens.starlight,
+                          ),
+                        ),
+                        SizedBox(height: widget.compact ? 3 : 4),
+                        Text(
+                          widget.label,
+                          style: AetheraTokens.labelSmall(
+                            color: AetheraTokens.moonGlow,
+                          ).copyWith(fontSize: widget.compact ? 10 : null),
+                        ),
+                      ],
                     ),
-                  ),
-                  SizedBox(height: widget.compact ? 3 : 4),
-                  Text(
-                    widget.label,
-                    style: AetheraTokens.labelSmall(
-                      color: AetheraTokens.moonGlow,
-                    ).copyWith(fontSize: widget.compact ? 10 : null),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
