@@ -22,6 +22,7 @@ import 'package:aethera/features/universe/widgets/nebula_layer.dart';
 import 'package:aethera/features/universe/widgets/shooting_star_overlay.dart';
 import 'package:aethera/core/constants/app_constants.dart';
 import 'package:aethera/shared/models/goal_model.dart';
+import 'package:aethera/shared/models/memory_model.dart';
 import 'package:aethera/shared/models/time_capsule_model.dart';
 import 'package:aethera/core/services/haptics_service.dart';
 import 'package:aethera/core/services/music_service.dart';
@@ -379,13 +380,9 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
           animation: _cameraDriftController,
           child: MemoryObjectWidget(
             memory: memory,
+            heroTag: 'memory_${memory.id}',
             animationIndex: index,
-            onTap:
-                () => _showMemoryDetail(
-                  context,
-                  memory.title,
-                  memory.description,
-                ),
+            onTap: () => _showMemoryDetail(context, memory),
           ),
           builder: (context, cachedChild) {
             final phase =
@@ -402,16 +399,47 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
     }).toList();
   }
 
-  void _showMemoryDetail(
-    BuildContext context,
-    String title,
-    String description,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => _MemoryDetailSheet(title: title, description: description),
+  void _showMemoryDetail(BuildContext context, MemoryModel memory) {
+    HapticsService.secondaryAction();
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withValues(alpha: 0.42),
+        pageBuilder:
+            (context, animation, secondaryAnimation) => SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: _MemoryDetailSheet(
+                    memory: memory,
+                    heroTag: 'memory_${memory.id}',
+                  ),
+                ),
+              ),
+            ),
+        transitionDuration: AetheraMotion.screen,
+        reverseTransitionDuration: AetheraMotion.screen,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: AetheraMotion.enter,
+            reverseCurve: AetheraMotion.exit,
+          );
+          return FadeTransition(
+            opacity: Tween<double>(begin: 0, end: 1).animate(curved),
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.08),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -3959,15 +3987,14 @@ class _EmotionRippleOverlayState extends State<_EmotionRippleOverlay>
 }
 
 class _MemoryDetailSheet extends StatelessWidget {
-  final String title;
-  final String description;
-
-  const _MemoryDetailSheet({required this.title, required this.description});
-
+  final MemoryModel memory;
+  final String heroTag;
+  const _MemoryDetailSheet({required this.memory, required this.heroTag});
   @override
   Widget build(BuildContext context) {
+    final createdLabel = _formatDateTimeLabel(context, memory.createdAt);
     return AetheraGlassPanel(
-      margin: const EdgeInsets.all(16),
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -3975,13 +4002,61 @@ class _MemoryDetailSheet extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('✦', style: TextStyle(fontSize: 20)),
+              Hero(
+                tag: heroTag,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: MemoryObjectWidget.buildOrb(
+                    type: memory.type,
+                    size: 58,
+                  ),
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: Text(title, style: AetheraTokens.displaySmall())),
+              Expanded(
+                child: Text(memory.title, style: AetheraTokens.displaySmall()),
+              ),
+              const SizedBox(width: 6),
+              Semantics(
+                button: true,
+                label: context.tr('Cerrar detalle', 'Close detail'),
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.06),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.14),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 15,
+                      color: AetheraTokens.moonGlow,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(description, style: AetheraTokens.bodyLarge()),
+          Text(memory.description, style: AetheraTokens.bodyLarge()),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              color: Colors.white.withValues(alpha: 0.06),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+            ),
+            child: Text(
+              context.tr('Creada: $createdLabel', 'Created: $createdLabel'),
+              style: AetheraTokens.labelSmall(color: AetheraTokens.moonGlow),
+            ),
+          ),
           const SizedBox(height: 24),
         ],
       ),
