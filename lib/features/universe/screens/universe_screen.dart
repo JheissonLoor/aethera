@@ -44,14 +44,20 @@ class UniverseScreen extends ConsumerStatefulWidget {
   ConsumerState<UniverseScreen> createState() => _UniverseScreenState();
 }
 
-class _UniverseScreenState extends ConsumerState<UniverseScreen> {
+class _UniverseScreenState extends ConsumerState<UniverseScreen>
+    with SingleTickerProviderStateMixin {
   String? _lastMood;
   String? _lastCutsceneMemoryId;
   Timer? _cosmicCutsceneTimer;
+  late final AnimationController _cameraDriftController;
 
   @override
   void initState() {
     super.initState();
+    _cameraDriftController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 26),
+    )..repeat();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       MusicService.instance.play();
     });
@@ -60,8 +66,22 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
   @override
   void dispose() {
     _cosmicCutsceneTimer?.cancel();
+    _cameraDriftController.dispose();
     MusicService.instance.stop();
     super.dispose();
+  }
+
+  Widget _parallaxLayer({required Widget child, required double depth}) {
+    return AnimatedBuilder(
+      animation: _cameraDriftController,
+      child: child,
+      builder: (context, cachedChild) {
+        final phase = _cameraDriftController.value * 2 * math.pi;
+        final dx = math.sin(phase) * depth;
+        final dy = math.cos(phase * 0.82) * depth * 0.72;
+        return Transform.translate(offset: Offset(dx, dy), child: cachedChild);
+      },
+    );
   }
 
   @override
@@ -100,17 +120,29 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          EmotionalSky(combinedMood: state.combinedMood),
+          _parallaxLayer(
+            depth: 4,
+            child: EmotionalSky(combinedMood: state.combinedMood),
+          ),
 
-          NebulaLayer(universeLevel: state.universeLevel),
+          _parallaxLayer(
+            depth: 6,
+            child: NebulaLayer(universeLevel: state.universeLevel),
+          ),
 
-          const CosmicBackground(),
+          _parallaxLayer(depth: 8, child: const CosmicBackground()),
 
           const ShootingStarOverlay(),
 
-          AuroraEffect(opacity: state.showAurora ? 1.0 : 0.0),
+          _parallaxLayer(
+            depth: 10,
+            child: AuroraEffect(opacity: state.showAurora ? 1.0 : 0.0),
+          ),
 
-          _AmbientGlowLayer(universeLevel: state.universeLevel),
+          _parallaxLayer(
+            depth: 12,
+            child: _AmbientGlowLayer(universeLevel: state.universeLevel),
+          ),
 
           Positioned(
             left: 0,
