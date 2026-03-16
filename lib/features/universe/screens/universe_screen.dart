@@ -67,6 +67,8 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(universeProvider);
+    final media = MediaQuery.of(context);
+    final compact = media.size.width < 370 || media.size.height < 740;
 
     if (state.cosmicEventMemoryId != null &&
         _lastCutsceneMemoryId != state.cosmicEventMemoryId) {
@@ -109,7 +111,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 140,
+            bottom: compact ? 128 : 140,
             height: 120,
             child: _HorizonLayer(
               state: state,
@@ -120,9 +122,9 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
           ..._buildMemoryObjects(context, state),
           if (_showUniverseEmptyState(state))
             Positioned(
-              left: 24,
-              right: 24,
-              bottom: 210,
+              left: compact ? 16 : 24,
+              right: compact ? 16 : 24,
+              bottom: compact ? 194 : 210,
               child: _UniverseEmptyStateCard(
                     onCreateMemory: _showQuickAddMemorySheet,
                     onCheckIn: _showQuickEmotionSheet,
@@ -138,9 +140,9 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
 
           if (state.dailyQuestion != null || state.capsules.isNotEmpty)
             Positioned(
-              top: 108,
-              left: 20,
-              right: 20,
+              top: compact ? 96 : 108,
+              left: compact ? 14 : 20,
+              right: compact ? 14 : 20,
               child: AnimatedSwitcher(
                 duration: AetheraMotion.sheet,
                 switchInCurve: AetheraMotion.enter,
@@ -153,18 +155,35 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
                   children: [
                     if (state.dailyQuestion != null)
                       _DailyQuestionPanel(
-                        state: state,
-                        onAnswer: () => _showDailyQuestionAnswerSheet(state),
-                      ),
+                            state: state,
+                            compact: compact,
+                            onAnswer:
+                                () => _showDailyQuestionAnswerSheet(state),
+                          )
+                          .animate(
+                            key: ValueKey(
+                              'dq_${state.dailyQuestion?.id}_${state.hasAnsweredDailyQuestion}_${state.isDailyQuestionRevealed}',
+                            ),
+                          )
+                          .fadeIn(duration: 360.ms)
+                          .slideY(begin: -0.08, end: 0),
                     if (state.dailyQuestion != null &&
                         state.capsules.isNotEmpty)
                       const SizedBox(height: 8),
                     if (state.capsules.isNotEmpty)
                       _TimeCapsuleStatusPanel(
-                        capsules: state.capsules,
-                        currentUserId: state.currentUserId,
-                        onOpenCapsule: _openCapsule,
-                      ),
+                            capsules: state.capsules,
+                            compact: compact,
+                            currentUserId: state.currentUserId,
+                            onOpenCapsule: _openCapsule,
+                          )
+                          .animate(
+                            key: ValueKey(
+                              'tc_${state.capsules.length}_${state.currentUserId}',
+                            ),
+                          )
+                          .fadeIn(delay: 70.ms, duration: 360.ms)
+                          .slideY(begin: -0.08, end: 0),
                   ],
                 ),
               ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.15, end: 0),
@@ -174,8 +193,8 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
             Positioned(
               top:
                   (state.dailyQuestion != null || state.capsules.isNotEmpty)
-                      ? 266
-                      : 160,
+                      ? (compact ? 248 : 266)
+                      : (compact ? 148 : 160),
               left: 24,
               right: 24,
               child: _NewMemoryToast()
@@ -217,7 +236,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
             Positioned(
               left: 20,
               right: 20,
-              bottom: 110,
+              bottom: compact ? 102 : 110,
               child: _SoloBanner(inviteCode: state.couple!.inviteCode)
                   .animate()
                   .fadeIn(delay: 1200.ms, duration: 600.ms)
@@ -231,13 +250,18 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               children: [
                 _TopBar(
                   state: state,
+                  compact: compact,
                 ).animate().fadeIn(duration: 780.ms).slideY(begin: -0.16),
                 const Spacer(),
-                _BottomBar(state: state, onOpenCapsule: _openCapsule)
+                _BottomBar(
+                      state: state,
+                      compact: compact,
+                      onOpenCapsule: _openCapsule,
+                    )
                     .animate()
                     .fadeIn(duration: 720.ms, delay: 160.ms)
                     .slideY(begin: 0.16),
-                const SizedBox(height: 16),
+                SizedBox(height: compact ? 10 : 16),
               ],
             ),
           ),
@@ -563,15 +587,24 @@ class _CinematicVignetteLayer extends StatelessWidget {
 
 class _TopBar extends ConsumerWidget {
   final UniverseAppState state;
-  const _TopBar({required this.state});
+  final bool compact;
+  const _TopBar({required this.state, required this.compact});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 12 : 16,
+        vertical: 12,
+      ),
       child: AetheraGlassPanel(
-        borderRadius: 22,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        borderRadius: compact ? 20 : 22,
+        padding: EdgeInsets.fromLTRB(
+          compact ? 13 : 16,
+          12,
+          compact ? 13 : 16,
+          compact ? 10 : 12,
+        ),
         backgroundColor: const Color(0x1A0C1428),
         borderColor: Colors.white.withValues(alpha: 0.18),
         shadows: [
@@ -623,6 +656,7 @@ class _TopBar extends ConsumerWidget {
                               context.tr('Tu Universo', 'Your Universe'),
                               style: AetheraTokens.displaySmall().copyWith(
                                 color: Colors.white,
+                                fontSize: compact ? 22 : null,
                               ),
                             ),
                           ),
@@ -636,7 +670,7 @@ class _TopBar extends ConsumerWidget {
                               color: AetheraTokens.moonGlow.withValues(
                                 alpha: 0.78,
                               ),
-                            ),
+                            ).copyWith(fontSize: compact ? 11 : null),
                           ),
                         ],
                       ),
@@ -701,7 +735,7 @@ class _TopBar extends ConsumerWidget {
                   children: [
                     EmotionOrb(
                       mood: state.couple?.user1Emotion?.mood ?? 'neutral',
-                      size: 34,
+                      size: compact ? 31 : 34,
                       animated: false,
                     ),
                     const SizedBox(width: 10),
@@ -709,6 +743,7 @@ class _TopBar extends ConsumerWidget {
                       child: _ConnectionBar(
                         strength: state.connectionStrength,
                         level: state.universeLevel,
+                        compact: compact,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -717,7 +752,7 @@ class _TopBar extends ConsumerWidget {
                       children: [
                         EmotionOrb(
                           mood: state.couple?.user2Emotion?.mood ?? 'neutral',
-                          size: 34,
+                          size: compact ? 31 : 34,
                           animated: false,
                         ),
                         Positioned(
@@ -834,7 +869,12 @@ class _SyncStatusBadge extends StatelessWidget {
 class _ConnectionBar extends StatelessWidget {
   final int strength;
   final int level;
-  const _ConnectionBar({required this.strength, required this.level});
+  final bool compact;
+  const _ConnectionBar({
+    required this.strength,
+    required this.level,
+    required this.compact,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -847,7 +887,9 @@ class _ConnectionBar extends StatelessWidget {
           children: [
             Text(
               context.tr('Nivel $level', 'Level $level'),
-              style: AetheraTokens.labelSmall(color: AetheraTokens.auroraTeal),
+              style: AetheraTokens.labelSmall(
+                color: AetheraTokens.auroraTeal,
+              ).copyWith(fontSize: compact ? 10 : null),
             ),
             AnimatedSwitcher(
               duration: AetheraMotion.short,
@@ -856,7 +898,9 @@ class _ConnectionBar extends StatelessWidget {
               child: Text(
                 '$strength%',
                 key: ValueKey(strength),
-                style: AetheraTokens.labelSmall(color: AetheraTokens.moonGlow),
+                style: AetheraTokens.labelSmall(
+                  color: AetheraTokens.moonGlow,
+                ).copyWith(fontSize: compact ? 10 : null),
               ),
             ),
           ],
@@ -865,7 +909,7 @@ class _ConnectionBar extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(5),
           child: Container(
-            height: 4,
+            height: compact ? 3 : 4,
             color: Colors.white.withValues(alpha: 0.08),
             child: TweenAnimationBuilder<double>(
               tween: Tween<double>(
@@ -944,17 +988,22 @@ class _HorizonLayer extends StatelessWidget {
 
 class _BottomBar extends ConsumerWidget {
   final UniverseAppState state;
+  final bool compact;
   final Future<void> Function(TimeCapsuleModel capsule) onOpenCapsule;
 
-  const _BottomBar({required this.state, required this.onOpenCapsule});
+  const _BottomBar({
+    required this.state,
+    required this.compact,
+    required this.onOpenCapsule,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 16),
       child: AetheraGlassPanel(
-        borderRadius: 24,
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+        borderRadius: compact ? 21 : 24,
+        padding: EdgeInsets.fromLTRB(10, 8, 10, compact ? 10 : 12),
         backgroundColor: const Color(0x1D0B1124),
         borderColor: Colors.white.withValues(alpha: 0.2),
         shadows: [
@@ -987,6 +1036,7 @@ class _BottomBar extends ConsumerWidget {
                 Expanded(
                   child: _ActionButton(
                     icon: Icons.mood_rounded,
+                    compact: compact,
                     label: context.tr('Sentir', 'Feel'),
                     onTap: () => _showEmotionSheet(context, ref),
                   ),
@@ -995,18 +1045,21 @@ class _BottomBar extends ConsumerWidget {
                 Expanded(
                   child: _ActionButton(
                     icon: Icons.auto_awesome_outlined,
+                    compact: compact,
                     label: context.tr('Memoria', 'Memory'),
                     onTap: () => _showAddMemorySheet(context, ref),
                   ),
                 ),
                 const SizedBox(width: 8),
                 _PulseFAB(
+                  compact: compact,
                   onTap: () => ref.read(universeProvider.notifier).sendPulse(),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _ActionButton(
                     icon: Icons.self_improvement_rounded,
+                    compact: compact,
                     label: context.tr('Ritual', 'Ritual'),
                     onTap: () => context.push(AetheraRoutes.ritual),
                   ),
@@ -1015,6 +1068,7 @@ class _BottomBar extends ConsumerWidget {
                 Expanded(
                   child: _ActionButton(
                     icon: Icons.more_horiz_rounded,
+                    compact: compact,
                     label: context.tr('Más', 'More'),
                     onTap: () => _showQuickActionsMenu(context, ref),
                   ),
@@ -1172,11 +1226,13 @@ class _BottomBar extends ConsumerWidget {
 
 class _ActionButton extends StatefulWidget {
   final IconData icon;
+  final bool compact;
   final String label;
   final VoidCallback onTap;
 
   const _ActionButton({
     required this.icon,
+    required this.compact,
     required this.label,
     required this.onTap,
   });
@@ -1218,7 +1274,7 @@ class _ActionButtonState extends State<_ActionButton> {
             opacity: _pressed ? 0.9 : 1,
             child: AnimatedContainer(
               duration: AetheraMotion.medium,
-              height: 56,
+              height: widget.compact ? 52 : 56,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
                 gradient: LinearGradient(
@@ -1245,8 +1301,8 @@ class _ActionButtonState extends State<_ActionButton> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 24,
-                    height: 24,
+                    width: widget.compact ? 22 : 24,
+                    height: widget.compact ? 22 : 24,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AetheraTokens.auroraTeal.withValues(
@@ -1255,16 +1311,16 @@ class _ActionButtonState extends State<_ActionButton> {
                     ),
                     child: Icon(
                       widget.icon,
-                      size: 14,
+                      size: widget.compact ? 13 : 14,
                       color: AetheraTokens.starlight,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: widget.compact ? 3 : 4),
                   Text(
                     widget.label,
                     style: AetheraTokens.labelSmall(
                       color: AetheraTokens.moonGlow,
-                    ),
+                    ).copyWith(fontSize: widget.compact ? 10 : null),
                   ),
                 ],
               ),
@@ -1440,6 +1496,7 @@ class _UniverseEmptyStateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.of(context).size.width < 370;
     return AetheraGlassPanel(
       borderRadius: 24,
       backgroundColor: const Color(0x240A1224),
@@ -1451,7 +1508,12 @@ class _UniverseEmptyStateCard extends StatelessWidget {
           spreadRadius: 2,
         ),
       ],
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      padding: EdgeInsets.fromLTRB(
+        18,
+        compact ? 16 : 18,
+        18,
+        compact ? 14 : 16,
+      ),
       child: Stack(
         children: [
           Positioned(
@@ -1476,8 +1538,8 @@ class _UniverseEmptyStateCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 62,
-                height: 62,
+                width: compact ? 56 : 62,
+                height: compact ? 56 : 62,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
@@ -1499,7 +1561,7 @@ class _UniverseEmptyStateCard extends StatelessWidget {
                 child: const Icon(
                   Icons.auto_awesome_rounded,
                   color: AetheraTokens.starlight,
-                  size: 28,
+                  size: 26,
                 ),
               ),
               const SizedBox(height: 12),
@@ -1508,7 +1570,9 @@ class _UniverseEmptyStateCard extends StatelessWidget {
                   'Tu universo esta listo para empezar',
                   'Your universe is ready to begin',
                 ),
-                style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
+                style: AetheraTokens.bodyLarge(
+                  color: AetheraTokens.starlight,
+                ).copyWith(fontSize: compact ? 15 : null),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
@@ -1517,7 +1581,9 @@ class _UniverseEmptyStateCard extends StatelessWidget {
                   'Crea tu primera memoria o registra como te sientes para encender la experiencia.',
                   'Create your first memory or check in your mood to light up the experience.',
                 ),
-                style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+                style: AetheraTokens.bodySmall(
+                  color: AetheraTokens.moonGlow,
+                ).copyWith(fontSize: compact ? 11 : null),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
@@ -1597,9 +1663,14 @@ class _HintChip extends StatelessWidget {
 
 class _DailyQuestionPanel extends StatelessWidget {
   final UniverseAppState state;
+  final bool compact;
   final VoidCallback onAnswer;
 
-  const _DailyQuestionPanel({required this.state, required this.onAnswer});
+  const _DailyQuestionPanel({
+    required this.state,
+    required this.compact,
+    required this.onAnswer,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1627,22 +1698,24 @@ class _DailyQuestionPanel extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 24,
-                height: 24,
+                width: compact ? 22 : 24,
+                height: compact ? 22 : 24,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AetheraTokens.auroraTeal.withValues(alpha: 0.16),
                 ),
                 child: const Icon(
                   Icons.chat_bubble_outline_rounded,
-                  size: 13,
+                  size: 12,
                   color: AetheraTokens.auroraTeal,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 context.tr('Pregunta del dia', 'Question of the day'),
-                style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
+                style: AetheraTokens.labelLarge(
+                  color: AetheraTokens.starlight,
+                ).copyWith(fontSize: compact ? 13 : null),
               ),
               const Spacer(),
               Container(
@@ -1658,17 +1731,22 @@ class _DailyQuestionPanel extends StatelessWidget {
                   dailyQuestion.dayKey,
                   style: AetheraTokens.labelSmall(
                     color: AetheraTokens.moonGlow,
-                  ),
+                  ).copyWith(fontSize: compact ? 10 : null),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: compact ? 7 : 8),
           Text(
             dailyQuestion.question,
-            style: AetheraTokens.bodyMedium(color: AetheraTokens.starlight),
+            style: AetheraTokens.bodyMedium(
+              color: AetheraTokens.starlight,
+            ).copyWith(
+              fontSize: compact ? 13 : null,
+              height: compact ? 1.35 : null,
+            ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: compact ? 8 : 10),
           if (!answered)
             AetheraButton(
               label: context.tr('Responder ahora', 'Answer now'),
@@ -1677,7 +1755,10 @@ class _DailyQuestionPanel extends StatelessWidget {
             ),
           if (answered && !revealed) ...[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 8 : 10,
+                vertical: compact ? 7 : 8,
+              ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: Colors.white.withValues(alpha: 0.04),
@@ -1702,7 +1783,7 @@ class _DailyQuestionPanel extends StatelessWidget {
                       ),
                       style: AetheraTokens.bodySmall(
                         color: AetheraTokens.moonGlow,
-                      ),
+                      ).copyWith(fontSize: compact ? 11 : null),
                     ),
                   ),
                 ],
@@ -1750,9 +1831,10 @@ class _AnswerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.of(context).size.width < 370;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(compact ? 10 : 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         gradient: LinearGradient(
@@ -1772,12 +1854,16 @@ class _AnswerTile extends StatelessWidget {
         children: [
           Text(
             label,
-            style: AetheraTokens.labelSmall(color: AetheraTokens.auroraTeal),
+            style: AetheraTokens.labelSmall(
+              color: AetheraTokens.auroraTeal,
+            ).copyWith(fontSize: compact ? 10 : null),
           ),
           const SizedBox(height: 4),
           Text(
             answer,
-            style: AetheraTokens.bodyMedium(color: AetheraTokens.starlight),
+            style: AetheraTokens.bodyMedium(
+              color: AetheraTokens.starlight,
+            ).copyWith(fontSize: compact ? 13 : null),
           ),
         ],
       ),
@@ -1899,11 +1985,13 @@ class _DailyQuestionAnswerSheetState extends State<_DailyQuestionAnswerSheet> {
 
 class _TimeCapsuleStatusPanel extends StatelessWidget {
   final List<TimeCapsuleModel> capsules;
+  final bool compact;
   final String? currentUserId;
   final Future<void> Function(TimeCapsuleModel capsule) onOpenCapsule;
 
   const _TimeCapsuleStatusPanel({
     required this.capsules,
+    required this.compact,
     required this.currentUserId,
     required this.onOpenCapsule,
   });
@@ -1945,22 +2033,24 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 24,
-                height: 24,
+                width: compact ? 22 : 24,
+                height: compact ? 22 : 24,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AetheraTokens.goldenDawn.withValues(alpha: 0.16),
                 ),
                 child: const Icon(
                   Icons.hourglass_bottom_rounded,
-                  size: 13,
+                  size: 12,
                   color: AetheraTokens.goldenDawn,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 context.tr('Capsulas del tiempo', 'Time capsules'),
-                style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
+                style: AetheraTokens.labelLarge(
+                  color: AetheraTokens.starlight,
+                ).copyWith(fontSize: compact ? 13 : null),
               ),
               const Spacer(),
               Container(
@@ -1979,12 +2069,12 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
                   ),
                   style: AetheraTokens.labelSmall(
                     color: AetheraTokens.goldenDawn,
-                  ),
+                  ).copyWith(fontSize: compact ? 10 : null),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: compact ? 7 : 8),
           Text(
             nextUnlock == null
                 ? context.tr(
@@ -1995,10 +2085,12 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
                   'Proxima apertura: ${_formatDateTimeLabel(context, nextUnlock)}',
                   'Next opening: ${_formatDateTimeLabel(context, nextUnlock)}',
                 ),
-            style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+            style: AetheraTokens.bodySmall(
+              color: AetheraTokens.moonGlow,
+            ).copyWith(fontSize: compact ? 11 : null),
           ),
           if (nextCapsule != null) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: compact ? 8 : 10),
             AetheraButton(
               label: context.tr('Abrir capsula', 'Open capsule'),
               variant: AetheraButtonVariant.outlined,
@@ -3346,8 +3438,9 @@ class _MusicToggleButtonState extends State<_MusicToggleButton> {
 }
 
 class _PulseFAB extends StatefulWidget {
+  final bool compact;
   final VoidCallback onTap;
-  const _PulseFAB({required this.onTap});
+  const _PulseFAB({required this.compact, required this.onTap});
 
   @override
   State<_PulseFAB> createState() => _PulseFABState();
@@ -3403,8 +3496,8 @@ class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
         behavior: HitTestBehavior.opaque,
         onTap: _handleTap,
         child: SizedBox(
-          width: 60,
-          height: 54,
+          width: widget.compact ? 54 : 60,
+          height: widget.compact ? 50 : 54,
           child: Center(
             child: Stack(
               alignment: Alignment.center,
@@ -3412,8 +3505,8 @@ class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
                 ScaleTransition(
                   scale: _idleScale,
                   child: Container(
-                    width: 52,
-                    height: 52,
+                    width: widget.compact ? 46 : 52,
+                    height: widget.compact ? 46 : 52,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
@@ -3434,8 +3527,8 @@ class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
                 ScaleTransition(
                   scale: _scale,
                   child: Container(
-                    width: 52,
-                    height: 52,
+                    width: widget.compact ? 46 : 52,
+                    height: widget.compact ? 46 : 52,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: AetheraTokens.auroraGradient,
@@ -3444,7 +3537,7 @@ class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
                     child: const Icon(
                       Icons.favorite_rounded,
                       color: AetheraTokens.deepSpace,
-                      size: 24,
+                      size: 22,
                     ),
                   ),
                 ),
