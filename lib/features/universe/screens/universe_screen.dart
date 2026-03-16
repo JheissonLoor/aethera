@@ -104,6 +104,8 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
 
           AuroraEffect(opacity: state.showAurora ? 1.0 : 0.0),
 
+          _AmbientGlowLayer(universeLevel: state.universeLevel),
+
           Positioned(
             left: 0,
             right: 0,
@@ -222,17 +224,19 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
                   .slideY(begin: 0.3, end: 0),
             ),
 
+          const _CinematicVignetteLayer(),
+
           SafeArea(
             child: Column(
               children: [
                 _TopBar(
                   state: state,
-                ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2),
+                ).animate().fadeIn(duration: 780.ms).slideY(begin: -0.16),
                 const Spacer(),
                 _BottomBar(state: state, onOpenCapsule: _openCapsule)
                     .animate()
-                    .fadeIn(duration: 800.ms, delay: 200.ms)
-                    .slideY(begin: 0.2),
+                    .fadeIn(duration: 720.ms, delay: 160.ms)
+                    .slideY(begin: 0.16),
                 const SizedBox(height: 16),
               ],
             ),
@@ -405,6 +409,158 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
   }
 }
 
+class _AmbientGlowLayer extends StatefulWidget {
+  final int universeLevel;
+
+  const _AmbientGlowLayer({required this.universeLevel});
+
+  @override
+  State<_AmbientGlowLayer> createState() => _AmbientGlowLayerState();
+}
+
+class _AmbientGlowLayerState extends State<_AmbientGlowLayer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 24),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final levelFactor = (widget.universeLevel / 12).clamp(0.22, 1.0);
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (_, __) {
+          final t = _ctrl.value;
+          final dxA = math.cos(t * math.pi * 2) * 46;
+          final dyA = math.sin(t * math.pi * 2) * 34;
+          final dxB = math.cos((t + 0.35) * math.pi * 2) * 38;
+          final dyB = math.sin((t + 0.35) * math.pi * 2) * 30;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Transform.translate(
+                offset: Offset(dxA, dyA),
+                child: Align(
+                  alignment: const Alignment(-0.82, -0.78),
+                  child: Container(
+                    width: 280,
+                    height: 280,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AetheraTokens.auroraTeal.withValues(
+                            alpha: 0.2 * levelFactor,
+                          ),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Transform.translate(
+                offset: Offset(dxB, dyB),
+                child: Align(
+                  alignment: const Alignment(0.9, 0.72),
+                  child: Container(
+                    width: 330,
+                    height: 330,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AetheraTokens.nebulaPurple.withValues(
+                            alpha: 0.22 * levelFactor,
+                          ),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CinematicVignetteLayer extends StatelessWidget {
+  const _CinematicVignetteLayer();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.1),
+                radius: 1.06,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.24),
+                ],
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              height: 84,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.24),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              height: 112,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.28),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TopBar extends ConsumerWidget {
   final UniverseAppState state;
   const _TopBar({required this.state});
@@ -414,110 +570,144 @@ class _TopBar extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: AetheraGlassPanel(
+        borderRadius: 22,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        backgroundColor: const Color(0x1A0C1428),
+        borderColor: Colors.white.withValues(alpha: 0.18),
+        shadows: [
+          BoxShadow(
+            color: AetheraTokens.nebulaPurple.withValues(alpha: 0.2),
+            blurRadius: 24,
+            spreadRadius: 2,
+          ),
+        ],
+        child: Stack(
           children: [
-            Row(
-              children: [
-                Text(
-                  context.tr('Tu Universo', 'Your Universe'),
-                  style: AetheraTokens.displaySmall(),
-                ),
-                const Spacer(),
-                _MusicToggleButton(),
-                const SizedBox(width: 8),
-                Semantics(
-                  button: true,
-                  label: context.tr('Abrir perfil', 'Open profile'),
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticsService.navigation();
-                      context.push(AetheraRoutes.profile);
-                    },
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.06),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.12),
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.person_outline_rounded,
-                        color: AetheraTokens.moonGlow,
-                        size: 14,
-                      ),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: IgnorePointer(
+                child: Container(
+                  height: 2,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        AetheraTokens.auroraTeal.withValues(alpha: 0.75),
+                        Colors.transparent,
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-            if (state.streakDays >= 2 ||
-                !state.isSyncConnected ||
-                state.pendingSyncActions > 0) ...[
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (state.streakDays >= 2)
-                      _StreakBadge(days: state.streakDays),
-                    if (!state.isSyncConnected || state.pendingSyncActions > 0)
-                      _SyncStatusBadge(state: state),
-                  ],
                 ),
               ),
-            ],
-            const SizedBox(height: 10),
-            Row(
+            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                EmotionOrb(
-                  mood: state.couple?.user1Emotion?.mood ?? 'neutral',
-                  size: 34,
-                  animated: false,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _ConnectionBar(
-                    strength: state.connectionStrength,
-                    level: state.universeLevel,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Stack(
-                  clipBehavior: Clip.none,
+                Row(
                   children: [
-                    EmotionOrb(
-                      mood: state.couple?.user2Emotion?.mood ?? 'neutral',
-                      size: 34,
-                      animated: false,
+                    Text(
+                      context.tr('Tu Universo', 'Your Universe'),
+                      style: AetheraTokens.displaySmall(),
                     ),
-                    Positioned(
-                      right: -2,
-                      bottom: -2,
-                      child: AnimatedContainer(
-                        duration: AetheraMotion.emphasized,
-                        width: 11,
-                        height: 11,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color:
-                              state.receivedPulse
-                                  ? AetheraTokens.roseQuartz
-                                  : state.partnerOnline
-                                  ? AetheraTokens.auroraTeal
-                                  : AetheraTokens.dusk,
-                          border: Border.all(
-                            color: AetheraTokens.deepSpace,
-                            width: 1.5,
+                    const Spacer(),
+                    _MusicToggleButton(),
+                    const SizedBox(width: 8),
+                    Semantics(
+                      button: true,
+                      label: context.tr('Abrir perfil', 'Open profile'),
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticsService.navigation();
+                          context.push(AetheraRoutes.profile);
+                        },
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.06),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.12),
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.person_outline_rounded,
+                            color: AetheraTokens.moonGlow,
+                            size: 14,
                           ),
                         ),
                       ),
+                    ),
+                  ],
+                ),
+                if (state.streakDays >= 2 ||
+                    !state.isSyncConnected ||
+                    state.pendingSyncActions > 0) ...[
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (state.streakDays >= 2)
+                          _StreakBadge(days: state.streakDays),
+                        if (!state.isSyncConnected ||
+                            state.pendingSyncActions > 0)
+                          _SyncStatusBadge(state: state),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    EmotionOrb(
+                      mood: state.couple?.user1Emotion?.mood ?? 'neutral',
+                      size: 34,
+                      animated: false,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ConnectionBar(
+                        strength: state.connectionStrength,
+                        level: state.universeLevel,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        EmotionOrb(
+                          mood: state.couple?.user2Emotion?.mood ?? 'neutral',
+                          size: 34,
+                          animated: false,
+                        ),
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: AnimatedContainer(
+                            duration: AetheraMotion.emphasized,
+                            width: 11,
+                            height: 11,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color:
+                                  state.receivedPulse
+                                      ? AetheraTokens.roseQuartz
+                                      : state.partnerOnline
+                                      ? AetheraTokens.auroraTeal
+                                      : AetheraTokens.dusk,
+                              border: Border.all(
+                                color: AetheraTokens.deepSpace,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -654,43 +844,73 @@ class _BottomBar extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: AetheraGlassPanel(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        child: Row(
+        borderRadius: 24,
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+        backgroundColor: const Color(0x1D0B1124),
+        borderColor: Colors.white.withValues(alpha: 0.2),
+        shadows: [
+          BoxShadow(
+            color: AetheraTokens.auroraTeal.withValues(alpha: 0.14),
+            blurRadius: 28,
+            spreadRadius: 2,
+          ),
+        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.mood_rounded,
-                label: context.tr('Sentir', 'Feel'),
-                onTap: () => _showEmotionSheet(context, ref),
+            Container(
+              width: 56,
+              height: 2,
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    AetheraTokens.auroraTeal.withValues(alpha: 0.7),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.auto_awesome_outlined,
-                label: context.tr('Memoria', 'Memory'),
-                onTap: () => _showAddMemorySheet(context, ref),
-              ),
-            ),
-            const SizedBox(width: 8),
-            _PulseFAB(
-              onTap: () => ref.read(universeProvider.notifier).sendPulse(),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.self_improvement_rounded,
-                label: context.tr('Ritual', 'Ritual'),
-                onTap: () => context.push(AetheraRoutes.ritual),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.more_horiz_rounded,
-                label: context.tr('Más', 'More'),
-                onTap: () => _showQuickActionsMenu(context, ref),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.mood_rounded,
+                    label: context.tr('Sentir', 'Feel'),
+                    onTap: () => _showEmotionSheet(context, ref),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.auto_awesome_outlined,
+                    label: context.tr('Memoria', 'Memory'),
+                    onTap: () => _showAddMemorySheet(context, ref),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _PulseFAB(
+                  onTap: () => ref.read(universeProvider.notifier).sendPulse(),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.self_improvement_rounded,
+                    label: context.tr('Ritual', 'Ritual'),
+                    onTap: () => context.push(AetheraRoutes.ritual),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.more_horiz_rounded,
+                    label: context.tr('Más', 'More'),
+                    onTap: () => _showQuickActionsMenu(context, ref),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -889,17 +1109,48 @@ class _ActionButtonState extends State<_ActionButton> {
             opacity: _pressed ? 0.9 : 1,
             child: AnimatedContainer(
               duration: AetheraMotion.medium,
-              height: 54,
+              height: 56,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                color: Colors.white.withValues(alpha: 0.04),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                borderRadius: BorderRadius.circular(15),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.white.withValues(alpha: _pressed ? 0.14 : 0.1),
+                    Colors.white.withValues(alpha: _pressed ? 0.04 : 0.02),
+                  ],
+                ),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: _pressed ? 0.28 : 0.18),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AetheraTokens.auroraTeal.withValues(
+                      alpha: _pressed ? 0.18 : 0.08,
+                    ),
+                    blurRadius: _pressed ? 12 : 8,
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(widget.icon, size: 18, color: AetheraTokens.moonGlow),
-                  const SizedBox(height: 3),
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AetheraTokens.auroraTeal.withValues(
+                        alpha: _pressed ? 0.18 : 0.12,
+                      ),
+                    ),
+                    child: Icon(
+                      widget.icon,
+                      size: 14,
+                      color: AetheraTokens.starlight,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     widget.label,
                     style: AetheraTokens.labelSmall(
@@ -934,7 +1185,17 @@ class _QuickActionsSheet extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: AetheraGlassPanel(
+          borderRadius: 22,
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+          backgroundColor: const Color(0x240A1224),
+          borderColor: Colors.white.withValues(alpha: 0.22),
+          shadows: [
+            BoxShadow(
+              color: AetheraTokens.nebulaPurple.withValues(alpha: 0.2),
+              blurRadius: 22,
+              spreadRadius: 1,
+            ),
+          ],
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -952,25 +1213,31 @@ class _QuickActionsSheet extends StatelessWidget {
                   'Send a short wish to your partner.',
                 ),
                 onTap: onWish,
-              ),
+              ).animate().fadeIn(duration: 260.ms).slideX(begin: 0.08, end: 0),
               _QuickActionTile(
-                icon: Icons.hourglass_bottom_rounded,
-                title: context.tr('Crear cápsula', 'Create capsule'),
-                subtitle: context.tr(
-                  'Guarda un mensaje para abrir más adelante.',
-                  'Save a message to open later.',
-                ),
-                onTap: onCapsule,
-              ),
+                    icon: Icons.hourglass_bottom_rounded,
+                    title: context.tr('Crear cápsula', 'Create capsule'),
+                    subtitle: context.tr(
+                      'Guarda un mensaje para abrir más adelante.',
+                      'Save a message to open later.',
+                    ),
+                    onTap: onCapsule,
+                  )
+                  .animate(delay: 70.ms)
+                  .fadeIn(duration: 260.ms)
+                  .slideX(begin: 0.08, end: 0),
               _QuickActionTile(
-                icon: Icons.self_improvement_rounded,
-                title: context.tr('Abrir ritual', 'Open ritual'),
-                subtitle: context.tr(
-                  'Ir directo al ritual semanal.',
-                  'Go directly to the weekly ritual.',
-                ),
-                onTap: onRitual,
-              ),
+                    icon: Icons.self_improvement_rounded,
+                    title: context.tr('Abrir ritual', 'Open ritual'),
+                    subtitle: context.tr(
+                      'Ir directo al ritual semanal.',
+                      'Go directly to the weekly ritual.',
+                    ),
+                    onTap: onRitual,
+                  )
+                  .animate(delay: 140.ms)
+                  .fadeIn(duration: 260.ms)
+                  .slideX(begin: 0.08, end: 0),
             ],
           ),
         ),
