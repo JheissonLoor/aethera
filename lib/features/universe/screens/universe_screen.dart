@@ -698,6 +698,24 @@ class _TopBar extends ConsumerWidget {
         ],
         child: Stack(
           children: [
+            const Positioned(
+              right: -26,
+              top: -34,
+              child: _AmbientLensGlow(
+                size: 126,
+                color: AetheraTokens.auroraTeal,
+                opacity: 0.22,
+              ),
+            ),
+            const Positioned(
+              left: -42,
+              bottom: -58,
+              child: _AmbientLensGlow(
+                size: 148,
+                color: AetheraTokens.nebulaPurple,
+                opacity: 0.2,
+              ),
+            ),
             Positioned(
               left: 0,
               right: 0,
@@ -866,6 +884,39 @@ class _TopBar extends ConsumerWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AmbientLensGlow extends StatelessWidget {
+  final double size;
+  final Color color;
+  final double opacity;
+
+  const _AmbientLensGlow({
+    required this.size,
+    required this.color,
+    required this.opacity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              color.withValues(alpha: opacity),
+              color.withValues(alpha: opacity * 0.34),
+              Colors.transparent,
+            ],
+            stops: const [0, 0.45, 1],
+          ),
         ),
       ),
     );
@@ -1095,65 +1146,88 @@ class _BottomBar extends ConsumerWidget {
             spreadRadius: 2,
           ),
         ],
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
           children: [
-            Container(
-              width: 56,
-              height: 2,
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.transparent,
-                    AetheraTokens.auroraTeal.withValues(alpha: 0.7),
-                    Colors.transparent,
-                  ],
-                ),
+            const Positioned(
+              right: -34,
+              top: -30,
+              child: _AmbientLensGlow(
+                size: 126,
+                color: AetheraTokens.auroraTeal,
+                opacity: 0.18,
               ),
             ),
-            Row(
+            const Positioned(
+              left: -48,
+              bottom: -72,
+              child: _AmbientLensGlow(
+                size: 168,
+                color: AetheraTokens.nebulaPurple,
+                opacity: 0.16,
+              ),
+            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.mood_rounded,
-                    compact: compact,
-                    label: context.tr('Sentir', 'Feel'),
-                    onTap: () => _showEmotionSheet(context, ref),
+                Container(
+                  width: 56,
+                  height: 2,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        AetheraTokens.auroraTeal.withValues(alpha: 0.7),
+                        Colors.transparent,
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.auto_awesome_outlined,
-                    compact: compact,
-                    label: context.tr('Memoria', 'Memory'),
-                    onTap: () => _showAddMemorySheet(context, ref),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _PulseFAB(
-                  compact: compact,
-                  onTap: () => ref.read(universeProvider.notifier).sendPulse(),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.self_improvement_rounded,
-                    compact: compact,
-                    label: context.tr('Ritual', 'Ritual'),
-                    onTap: () => context.push(AetheraRoutes.ritual),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.more_horiz_rounded,
-                    compact: compact,
-                    label: context.tr('Más', 'More'),
-                    onTap: () => _showQuickActionsMenu(context, ref),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.mood_rounded,
+                        compact: compact,
+                        label: context.tr('Sentir', 'Feel'),
+                        onTap: () => _showEmotionSheet(context, ref),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.auto_awesome_outlined,
+                        compact: compact,
+                        label: context.tr('Memoria', 'Memory'),
+                        onTap: () => _showAddMemorySheet(context, ref),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _PulseFAB(
+                      compact: compact,
+                      onTap:
+                          () => ref.read(universeProvider.notifier).sendPulse(),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.self_improvement_rounded,
+                        compact: compact,
+                        label: context.tr('Ritual', 'Ritual'),
+                        onTap: () => context.push(AetheraRoutes.ritual),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.more_horiz_rounded,
+                        compact: compact,
+                        label: context.tr('Más', 'More'),
+                        onTap: () => _showQuickActionsMenu(context, ref),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
