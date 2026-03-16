@@ -4,9 +4,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aethera/core/providers/app_state_notifier.dart';
 import 'package:aethera/core/router/app_router.dart';
+import 'package:aethera/core/services/haptics_service.dart';
+import 'package:aethera/core/theme/aethera_motion.dart';
 import 'package:aethera/core/theme/aethera_tokens.dart';
 import 'package:aethera/l10n/l10n_ext.dart';
 import 'package:aethera/shared/widgets/aethera_button.dart';
+import 'package:aethera/shared/widgets/aethera_glass_panel.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -28,13 +31,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   void initState() {
     super.initState();
-    _bgCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+    _bgCtrl = AnimationController(vsync: this, duration: AetheraMotion.long)
+      ..repeat(reverse: true);
     _particleCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 8),
+      duration: const Duration(seconds: 7),
     )..repeat();
   }
 
@@ -47,15 +48,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _complete() async {
+    HapticsService.affirmation();
     await appStateNotifier.completeOnboarding();
     if (mounted) context.go(AetheraRoutes.auth);
   }
 
   void _next() {
+    HapticsService.secondaryAction();
     if (_currentPage < _totalPages - 1) {
       _pageCtrl.nextPage(
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOutCubic,
+        duration: AetheraMotion.screen,
+        curve: AetheraMotion.standard,
       );
     } else {
       _complete();
@@ -65,7 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   List<_OnboardingPageData> _pages(BuildContext context) {
     return [
       _OnboardingPageData(
-        emoji: '✦',
+        icon: Icons.auto_awesome_rounded,
         title: context.tr('Tu universo privado', 'Your private universe'),
         subtitle: context.tr(
           'Un espacio digital que solo existe entre tu y tu pareja. Invisible para el mundo. Infinito para ustedes.',
@@ -75,7 +78,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         bgColors: const [Color(0xFF001A14), Color(0xFF070B14)],
       ),
       _OnboardingPageData(
-        emoji: '🌊',
+        icon: Icons.water_drop_rounded,
         title: context.tr(
           'El cielo cambia contigo',
           'The sky changes with you',
@@ -88,7 +91,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         bgColors: const [Color(0xFF0E0018), Color(0xFF070B14)],
       ),
       _OnboardingPageData(
-        emoji: '⭐',
+        icon: Icons.star_rounded,
         title: context.tr(
           'Tus recuerdos flotan en las estrellas',
           'Your memories float among the stars',
@@ -101,7 +104,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         bgColors: const [Color(0xFF1A1200), Color(0xFF070B14)],
       ),
       _OnboardingPageData(
-        emoji: '🏰',
+        icon: Icons.castle_rounded,
         title: context.tr(
           'Sus suenos construyen el horizonte',
           'Your shared dreams build the horizon',
@@ -114,7 +117,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         bgColors: const [Color(0xFF001020), Color(0xFF070B14)],
       ),
       _OnboardingPageData(
-        emoji: '💗',
+        icon: Icons.favorite_rounded,
         title: context.tr(
           'Conectados a traves del cosmos',
           'Connected through the cosmos',
@@ -175,6 +178,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             itemBuilder:
                 (_, i) => _OnboardingPage(
                   data: pages[i],
+                  index: i,
+                  total: _totalPages,
                   isActive: i == _currentPage,
                   isLast: i == _totalPages - 1,
                   onNext: _next,
@@ -189,8 +194,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               children: List.generate(_totalPages, (i) {
                 final isActive = i == _currentPage;
                 return AnimatedContainer(
-                  duration: const Duration(milliseconds: 350),
-                  curve: Curves.easeInOut,
+                  duration: AetheraMotion.emphasized,
+                  curve: AetheraMotion.standard,
                   margin: const EdgeInsets.symmetric(horizontal: 4),
                   width: isActive ? 28 : 6,
                   height: 6,
@@ -216,11 +221,27 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     button: true,
                     label: context.tr('Omitir onboarding', 'Skip onboarding'),
                     child: GestureDetector(
-                      onTap: _complete,
-                      child: Text(
-                        context.tr('Omitir', 'Skip'),
-                        style: AetheraTokens.bodySmall(
-                          color: AetheraTokens.dusk,
+                      onTap: () {
+                        HapticsService.secondaryAction();
+                        _complete();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(999),
+                          color: Colors.white.withValues(alpha: 0.06),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.14),
+                          ),
+                        ),
+                        child: Text(
+                          context.tr('Omitir', 'Skip'),
+                          style: AetheraTokens.bodySmall(
+                            color: AetheraTokens.moonGlow,
+                          ),
                         ),
                       ),
                     ),
@@ -236,12 +257,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
 class _OnboardingPage extends StatelessWidget {
   final _OnboardingPageData data;
+  final int index;
+  final int total;
   final bool isActive;
   final bool isLast;
   final VoidCallback onNext;
 
   const _OnboardingPage({
     required this.data,
+    required this.index,
+    required this.total,
     required this.isActive,
     required this.isLast,
     required this.onNext,
@@ -256,140 +281,140 @@ class _OnboardingPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isActive)
+              _StepChip(index: index + 1, total: total, color: data.accentColor)
+                  .animate()
+                  .fadeIn(duration: AetheraMotion.emphasized)
+                  .slideY(begin: -0.15, end: 0, curve: AetheraMotion.enter),
+            const SizedBox(height: 20),
+            if (isActive)
               Container(
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          data.accentColor.withValues(alpha: 0.22),
+                          Colors.transparent,
+                        ],
+                      ),
+                      border: Border.all(
+                        color: data.accentColor.withValues(alpha: 0.5),
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: data.accentColor.withValues(alpha: 0.3),
-                          blurRadius: 48,
-                          spreadRadius: 12,
+                          color: data.accentColor.withValues(alpha: 0.35),
+                          blurRadius: 40,
+                          spreadRadius: 8,
                         ),
                       ],
                     ),
-                    child: Center(
-                      child:
-                          data.emoji == '✦'
-                              ? ShaderMask(
-                                shaderCallback:
-                                    (bounds) => const LinearGradient(
-                                      colors: [
-                                        AetheraTokens.auroraTeal,
-                                        AetheraTokens.nebulaPurple,
-                                      ],
-                                    ).createShader(bounds),
-                                child: Text(
-                                  data.emoji,
-                                  style: const TextStyle(
-                                    fontSize: 72,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              )
-                              : Text(
-                                data.emoji,
-                                style: const TextStyle(fontSize: 72),
-                              ),
+                    child: Icon(
+                      data.icon,
+                      size: 56,
+                      color: AetheraTokens.starlight,
                     ),
                   )
                   .animate(key: ValueKey('emoji_$isActive'))
                   .scale(
                     begin: const Offset(0.6, 0.6),
                     end: const Offset(1.0, 1.0),
-                    duration: 700.ms,
-                    curve: Curves.elasticOut,
+                    duration: AetheraMotion.screen,
+                    curve: AetheraMotion.emphasis,
                   )
-                  .fadeIn(duration: 400.ms)
+                  .fadeIn(duration: AetheraMotion.emphasized)
             else
               const SizedBox(height: 120),
-            const SizedBox(height: 48),
+            const SizedBox(height: 34),
             if (isActive)
-              Text(
-                    data.title,
-                    style: AetheraTokens.displayMedium().copyWith(
-                      fontSize: 30,
-                      height: 1.25,
-                      letterSpacing: 0.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  )
-                  .animate(key: ValueKey('title_$isActive'))
-                  .fadeIn(delay: 200.ms, duration: 600.ms)
-                  .slideY(begin: 0.15, end: 0, curve: Curves.easeOut),
-            const SizedBox(height: 20),
-            if (isActive)
-              Container(
-                    width: 40,
-                    height: 2,
-                    decoration: BoxDecoration(
-                      color: data.accentColor,
-                      borderRadius: BorderRadius.circular(1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: data.accentColor.withValues(alpha: 0.6),
-                          blurRadius: 8,
+              AetheraGlassPanel(
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+                    child: Column(
+                      children: [
+                        Text(
+                          data.title,
+                          style: AetheraTokens.displayMedium().copyWith(
+                            fontSize: 30,
+                            height: 1.25,
+                            letterSpacing: 0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 14),
+                        Container(
+                          width: 44,
+                          height: 2,
+                          decoration: BoxDecoration(
+                            color: data.accentColor,
+                            borderRadius: BorderRadius.circular(1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: data.accentColor.withValues(alpha: 0.6),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          data.subtitle,
+                          style: AetheraTokens.bodyLarge(
+                            color: AetheraTokens.moonGlow,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   )
-                  .animate(key: ValueKey('line_$isActive'))
-                  .fadeIn(delay: 400.ms)
-                  .scaleX(begin: 0, end: 1, delay: 400.ms, duration: 400.ms),
-            const SizedBox(height: 20),
-            if (isActive)
-              Text(
-                    data.subtitle,
-                    style: AetheraTokens.bodyLarge(
-                      color: AetheraTokens.moonGlow,
-                    ),
-                    textAlign: TextAlign.center,
+                  .animate(key: ValueKey('title_$isActive'))
+                  .fadeIn(
+                    delay: AetheraMotion.stagger * 2,
+                    duration: AetheraMotion.screen,
                   )
-                  .animate(key: ValueKey('sub_$isActive'))
-                  .fadeIn(delay: 400.ms, duration: 700.ms)
-                  .slideY(begin: 0.1, end: 0),
-            const SizedBox(height: 52),
+                  .slideY(begin: 0.15, end: 0, curve: AetheraMotion.enter),
+            const SizedBox(height: 30),
             if (isLast && isActive)
               AetheraButton(
                     label: context.tr(
-                      'Comenzar mi universo  ✦',
-                      'Start my universe  ✦',
+                      'Comenzar mi universo',
+                      'Start my universe',
                     ),
                     onPressed: onNext,
                   )
                   .animate(key: const ValueKey('cta'))
-                  .fadeIn(delay: 700.ms)
+                  .fadeIn(delay: AetheraMotion.screen)
                   .slideY(begin: 0.2, end: 0),
             if (!isLast && isActive)
               Semantics(
-                button: true,
-                label: context.tr('Siguiente pagina', 'Next page'),
-                child: GestureDetector(
-                  onTap: onNext,
-                  behavior: HitTestBehavior.translucent,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          context.tr('Siguiente', 'Next'),
-                          style: AetheraTokens.bodyMedium(
-                            color: data.accentColor,
-                          ),
+                    button: true,
+                    label: context.tr('Siguiente pagina', 'Next page'),
+                    child: GestureDetector(
+                      onTap: onNext,
+                      behavior: HitTestBehavior.translucent,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              context.tr('Siguiente', 'Next'),
+                              style: AetheraTokens.bodyMedium(
+                                color: data.accentColor,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              color: data.accentColor,
+                              size: 16,
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 6),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          color: data.accentColor,
-                          size: 16,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ).animate(key: ValueKey('next_$isActive')).fadeIn(delay: 800.ms),
+                  )
+                  .animate(key: ValueKey('next_$isActive'))
+                  .fadeIn(delay: AetheraMotion.screenSlow),
           ],
         ),
       ),
@@ -398,19 +423,47 @@ class _OnboardingPage extends StatelessWidget {
 }
 
 class _OnboardingPageData {
-  final String emoji;
+  final IconData icon;
   final String title;
   final String subtitle;
   final Color accentColor;
   final List<Color> bgColors;
 
   const _OnboardingPageData({
-    required this.emoji,
+    required this.icon,
     required this.title,
     required this.subtitle,
     required this.accentColor,
     required this.bgColors,
   });
+}
+
+class _StepChip extends StatelessWidget {
+  final int index;
+  final int total;
+  final Color color;
+
+  const _StepChip({
+    required this.index,
+    required this.total,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: color.withValues(alpha: 0.18),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Text(
+        context.tr('Paso $index de $total', 'Step $index of $total'),
+        style: AetheraTokens.labelSmall(color: color),
+      ),
+    );
+  }
 }
 
 class _AmbientParticlePainter extends CustomPainter {

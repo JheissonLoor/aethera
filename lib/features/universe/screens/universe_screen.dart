@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:aethera/core/theme/aethera_tokens.dart';
+import 'package:aethera/core/theme/aethera_motion.dart';
 import 'package:aethera/core/router/app_router.dart';
 import 'package:aethera/shared/widgets/aethera_glass_panel.dart';
 import 'package:aethera/shared/widgets/aethera_button.dart';
@@ -139,9 +140,9 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               left: 20,
               right: 20,
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 320),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
+                duration: AetheraMotion.sheet,
+                switchInCurve: AetheraMotion.enter,
+                switchOutCurve: AetheraMotion.exit,
                 child: Column(
                   key: ValueKey(
                     'panels_${state.dailyQuestion?.id}_${state.capsules.length}',
@@ -302,7 +303,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
   }
 
   void _showQuickAddMemorySheet() {
-    HapticsService.light();
+    HapticsService.secondaryAction();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -318,14 +319,14 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
                     description: description,
                     type: type,
                   );
-              HapticsService.success();
+              HapticsService.affirmation();
             },
           ),
     );
   }
 
   void _showQuickEmotionSheet() {
-    HapticsService.selection();
+    HapticsService.secondaryAction();
     final currentMood = ref.read(universeProvider).couple?.user1Emotion?.mood;
     showModalBottomSheet(
       context: context,
@@ -337,7 +338,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
             onSelect: (mood) {
               Navigator.of(context).pop();
               ref.read(universeProvider.notifier).updateEmotion(mood);
-              HapticsService.success();
+              HapticsService.affirmation();
             },
           ),
     );
@@ -360,7 +361,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
               await ref
                   .read(universeProvider.notifier)
                   .submitDailyQuestionAnswer(answer);
-              HapticsService.success();
+              HapticsService.affirmation();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -376,18 +377,18 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
   }
 
   Future<void> _openCapsule(TimeCapsuleModel capsule) async {
-    HapticsService.light();
+    HapticsService.primaryAction();
     final opened = await ref
         .read(universeProvider.notifier)
         .openTimeCapsule(capsule.id);
     if (!mounted) return;
     if (opened == null) {
-      HapticsService.selection();
+      HapticsService.secondaryAction();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             context.tr(
-              'Esta capsula aun no se puede abrir.',
+              'Esta cápsula aún no se puede abrir.',
               'This capsule cannot be opened yet.',
             ),
           ),
@@ -395,7 +396,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen> {
       );
       return;
     }
-    HapticsService.success();
+    HapticsService.affirmation();
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -413,7 +414,7 @@ class _TopBar extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: AetheraGlassPanel(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -423,41 +424,55 @@ class _TopBar extends ConsumerWidget {
                   context.tr('Tu Universo', 'Your Universe'),
                   style: AetheraTokens.displaySmall(),
                 ),
-                if (state.streakDays >= 2) ...[
-                  const SizedBox(width: 8),
-                  _StreakBadge(days: state.streakDays),
-                ],
                 const Spacer(),
-                if (!state.isSyncConnected || state.pendingSyncActions > 0) ...[
-                  _SyncStatusBadge(state: state),
-                  const SizedBox(width: 8),
-                ],
                 _MusicToggleButton(),
                 const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    HapticsService.selection();
-                    context.push(AetheraRoutes.profile);
-                  },
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.06),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.12),
+                Semantics(
+                  button: true,
+                  label: context.tr('Abrir perfil', 'Open profile'),
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticsService.navigation();
+                      context.push(AetheraRoutes.profile);
+                    },
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.06),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12),
+                        ),
                       ),
-                    ),
-                    child: Icon(
-                      Icons.person_outline_rounded,
-                      color: AetheraTokens.moonGlow,
-                      size: 14,
+                      child: Icon(
+                        Icons.person_outline_rounded,
+                        color: AetheraTokens.moonGlow,
+                        size: 14,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
+            if (state.streakDays >= 2 ||
+                !state.isSyncConnected ||
+                state.pendingSyncActions > 0) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (state.streakDays >= 2)
+                      _StreakBadge(days: state.streakDays),
+                    if (!state.isSyncConnected || state.pendingSyncActions > 0)
+                      _SyncStatusBadge(state: state),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 10),
             Row(
               children: [
@@ -486,7 +501,7 @@ class _TopBar extends ConsumerWidget {
                       right: -2,
                       bottom: -2,
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 400),
+                        duration: AetheraMotion.emphasized,
                         width: 11,
                         height: 11,
                         decoration: BoxDecoration(
@@ -529,8 +544,8 @@ class _SyncStatusBadge extends StatelessWidget {
     final label =
         offline
             ? (queued > 0
-                ? context.tr('Sin conexion ($queued)', 'Offline ($queued)')
-                : context.tr('Sin conexion', 'Offline'))
+                ? context.tr('Sin conexión ($queued)', 'Offline ($queued)')
+                : context.tr('Sin conexión', 'Offline'))
             : context.tr('Sincronizando $queued', 'Syncing $queued');
 
     return Container(
@@ -644,40 +659,37 @@ class _BottomBar extends ConsumerWidget {
           children: [
             Expanded(
               child: _ActionButton(
-                icon: '💭',
+                icon: Icons.mood_rounded,
                 label: context.tr('Sentir', 'Feel'),
                 onTap: () => _showEmotionSheet(context, ref),
               ),
             ),
+            const SizedBox(width: 4),
             Expanded(
               child: _ActionButton(
-                icon: '✦',
+                icon: Icons.auto_awesome_outlined,
                 label: context.tr('Memoria', 'Memory'),
                 onTap: () => _showAddMemorySheet(context, ref),
               ),
             ),
+            const SizedBox(width: 8),
             _PulseFAB(
               onTap: () => ref.read(universeProvider.notifier).sendPulse(),
             ),
+            const SizedBox(width: 8),
             Expanded(
               child: _ActionButton(
-                icon: '✨',
-                label: context.tr('Deseo', 'Wish'),
-                onTap: () => _showWishSheet(context, ref),
-              ),
-            ),
-            Expanded(
-              child: _ActionButton(
-                icon: '⏳',
-                label: context.tr('Capsula', 'Capsule'),
-                onTap: () => _showCreateCapsuleSheet(context, ref),
-              ),
-            ),
-            Expanded(
-              child: _ActionButton(
-                icon: '🌙',
+                icon: Icons.self_improvement_rounded,
                 label: context.tr('Ritual', 'Ritual'),
                 onTap: () => context.push(AetheraRoutes.ritual),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.more_horiz_rounded,
+                label: context.tr('Más', 'More'),
+                onTap: () => _showQuickActionsMenu(context, ref),
               ),
             ),
           ],
@@ -687,7 +699,7 @@ class _BottomBar extends ConsumerWidget {
   }
 
   void _showEmotionSheet(BuildContext context, WidgetRef ref) {
-    HapticsService.selection();
+    HapticsService.secondaryAction();
     final currentMood = ref.read(universeProvider).couple?.user1Emotion?.mood;
     showModalBottomSheet(
       context: context,
@@ -699,14 +711,14 @@ class _BottomBar extends ConsumerWidget {
             onSelect: (mood) {
               Navigator.of(context).pop();
               ref.read(universeProvider.notifier).updateEmotion(mood);
-              HapticsService.success();
+              HapticsService.affirmation();
             },
           ),
     );
   }
 
   void _showWishSheet(BuildContext context, WidgetRef ref) {
-    HapticsService.selection();
+    HapticsService.secondaryAction();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -716,14 +728,14 @@ class _BottomBar extends ConsumerWidget {
             onSend: (message) async {
               Navigator.of(context).pop();
               await ref.read(universeProvider.notifier).sendWish(message);
-              HapticsService.success();
+              HapticsService.affirmation();
             },
           ),
     );
   }
 
   void _showAddMemorySheet(BuildContext context, WidgetRef ref) {
-    HapticsService.selection();
+    HapticsService.secondaryAction();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -739,14 +751,14 @@ class _BottomBar extends ConsumerWidget {
                     description: description,
                     type: type,
                   );
-              HapticsService.success();
+              HapticsService.affirmation();
             },
           ),
     );
   }
 
   void _showCreateCapsuleSheet(BuildContext context, WidgetRef ref) {
-    HapticsService.selection();
+    HapticsService.secondaryAction();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -762,13 +774,13 @@ class _BottomBar extends ConsumerWidget {
                     message: message,
                     unlockAt: unlockAt,
                   );
-              HapticsService.success();
+              HapticsService.affirmation();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
                       context.tr(
-                        'Capsula enviada al futuro.',
+                        'Cápsula enviada al futuro.',
                         'Capsule sent to the future.',
                       ),
                     ),
@@ -795,10 +807,42 @@ class _BottomBar extends ConsumerWidget {
           ),
     );
   }
+
+  void _showQuickActionsMenu(BuildContext context, WidgetRef ref) {
+    HapticsService.secondaryAction();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder:
+          (_) => _QuickActionsSheet(
+            onWish:
+                () => _openSecondaryAction(
+                  context,
+                  () => _showWishSheet(context, ref),
+                ),
+            onCapsule:
+                () => _openSecondaryAction(
+                  context,
+                  () => _showCreateCapsuleSheet(context, ref),
+                ),
+            onRitual:
+                () => _openSecondaryAction(
+                  context,
+                  () => context.push(AetheraRoutes.ritual),
+                ),
+          ),
+    );
+  }
+
+  void _openSecondaryAction(BuildContext context, VoidCallback action) {
+    Navigator.of(context).pop();
+    Future<void>.delayed(AetheraMotion.stagger, action);
+  }
 }
 
 class _ActionButton extends StatefulWidget {
-  final String icon;
+  final IconData icon;
   final String label;
   final VoidCallback onTap;
 
@@ -817,7 +861,7 @@ class _ActionButtonState extends State<_ActionButton> {
 
   void _onTapDown(TapDownDetails _) {
     setState(() => _pressed = true);
-    HapticsService.light();
+    HapticsService.secondaryAction();
   }
 
   void _onTapUp([TapUpDetails? _]) {
@@ -838,23 +882,164 @@ class _ActionButtonState extends State<_ActionButton> {
         onTap: widget.onTap,
         child: AnimatedScale(
           scale: _pressed ? 0.93 : 1,
-          duration: const Duration(milliseconds: 110),
-          curve: Curves.easeOut,
+          duration: AetheraMotion.micro,
+          curve: AetheraMotion.enter,
           child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 120),
+            duration: AetheraMotion.short,
             opacity: _pressed ? 0.9 : 1,
-            child: SizedBox(
+            child: AnimatedContainer(
+              duration: AetheraMotion.medium,
               height: 54,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: Colors.white.withValues(alpha: 0.04),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(widget.icon, style: const TextStyle(fontSize: 22)),
-                  const SizedBox(height: 4),
-                  Text(widget.label, style: AetheraTokens.labelSmall()),
+                  Icon(widget.icon, size: 18, color: AetheraTokens.moonGlow),
+                  const SizedBox(height: 3),
+                  Text(
+                    widget.label,
+                    style: AetheraTokens.labelSmall(
+                      color: AetheraTokens.moonGlow,
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionsSheet extends StatelessWidget {
+  final VoidCallback onWish;
+  final VoidCallback onCapsule;
+  final VoidCallback onRitual;
+
+  const _QuickActionsSheet({
+    required this.onWish,
+    required this.onCapsule,
+    required this.onRitual,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: AetheraGlassPanel(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('Acciones rápidas', 'Quick actions'),
+                style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
+              ),
+              const SizedBox(height: 8),
+              _QuickActionTile(
+                icon: Icons.auto_awesome_outlined,
+                title: context.tr('Enviar deseo', 'Send wish'),
+                subtitle: context.tr(
+                  'Manda un deseo breve a tu pareja.',
+                  'Send a short wish to your partner.',
+                ),
+                onTap: onWish,
+              ),
+              _QuickActionTile(
+                icon: Icons.hourglass_bottom_rounded,
+                title: context.tr('Crear cápsula', 'Create capsule'),
+                subtitle: context.tr(
+                  'Guarda un mensaje para abrir más adelante.',
+                  'Save a message to open later.',
+                ),
+                onTap: onCapsule,
+              ),
+              _QuickActionTile(
+                icon: Icons.self_improvement_rounded,
+                title: context.tr('Abrir ritual', 'Open ritual'),
+                subtitle: context.tr(
+                  'Ir directo al ritual semanal.',
+                  'Go directly to the weekly ritual.',
+                ),
+                onTap: onRitual,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _QuickActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AetheraTokens.auroraTeal.withValues(alpha: 0.12),
+                border: Border.all(
+                  color: AetheraTokens.auroraTeal.withValues(alpha: 0.24),
+                ),
+              ),
+              child: Icon(icon, size: 16, color: AetheraTokens.auroraTeal),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AetheraTokens.bodyMedium(
+                      color: AetheraTokens.starlight,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AetheraTokens.bodySmall(
+                      color: AetheraTokens.moonGlow,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: AetheraTokens.dusk,
+            ),
+          ],
         ),
       ),
     );
@@ -901,7 +1086,7 @@ class _UniverseEmptyStateCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             context.tr(
-              'Tu universo esta listo para empezar',
+              'Tu universo está listo para empezar',
               'Your universe is ready to begin',
             ),
             style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
@@ -967,7 +1152,7 @@ class _DailyQuestionPanel extends StatelessWidget {
               const Text('💬', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Text(
-                context.tr('Pregunta del dia', 'Question of the day'),
+                context.tr('Pregunta del día', 'Question of the day'),
                 style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
               ),
               const Spacer(),
@@ -1039,7 +1224,7 @@ class _DailyQuestionPanel extends StatelessWidget {
               answer:
                   state.partnerDailyQuestionAnswer?.trim().isNotEmpty == true
                       ? state.partnerDailyQuestionAnswer!
-                      : context.tr('Aun no disponible', 'Not available yet'),
+                      : context.tr('Aún no disponible', 'Not available yet'),
             ),
           ],
         ],
@@ -1140,7 +1325,7 @@ class _DailyQuestionAnswerSheetState extends State<_DailyQuestionAnswerSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              context.tr('Pregunta del dia', 'Question of the day'),
+              context.tr('Pregunta del día', 'Question of the day'),
               style: AetheraTokens.displaySmall(),
             ),
             const SizedBox(height: 8),
@@ -1236,7 +1421,7 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
               const Text('⏳', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Text(
-                context.tr('Capsulas del tiempo', 'Time capsules'),
+                context.tr('Cápsulas del tiempo', 'Time capsules'),
                 style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
               ),
               const Spacer(),
@@ -1255,11 +1440,11 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
           Text(
             nextUnlock == null
                 ? context.tr(
-                  'No hay capsulas pendientes por abrir.',
+                  'No hay cápsulas pendientes por abrir.',
                   'There are no capsules pending to open.',
                 )
                 : context.tr(
-                  'Proxima apertura: ${_formatDateTimeLabel(context, nextUnlock)}',
+                  'Próxima apertura: ${_formatDateTimeLabel(context, nextUnlock)}',
                   'Next opening: ${_formatDateTimeLabel(context, nextUnlock)}',
                 ),
             style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
@@ -1267,7 +1452,7 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
           if (nextCapsule != null) ...[
             const SizedBox(height: 10),
             AetheraButton(
-              label: context.tr('Abrir capsula', 'Open capsule'),
+              label: context.tr('Abrir cápsula', 'Open capsule'),
               variant: AetheraButtonVariant.outlined,
               onPressed: () => onOpenCapsule(nextCapsule),
               width: double.infinity,
@@ -1406,7 +1591,7 @@ class _CreateCapsuleSheetState extends State<_CreateCapsuleSheet> {
                 const Text('⏳', style: TextStyle(fontSize: 20)),
                 const SizedBox(width: 10),
                 Text(
-                  context.tr('Nueva capsula', 'New capsule'),
+                  context.tr('Nueva cápsula', 'New capsule'),
                   style: AetheraTokens.displaySmall(),
                 ),
               ],
@@ -1482,14 +1667,14 @@ class _CreateCapsuleSheetState extends State<_CreateCapsuleSheet> {
               label:
                   _isSaving
                       ? context.tr('Guardando...', 'Saving...')
-                      : context.tr('Guardar capsula', 'Save capsule'),
+                      : context.tr('Guardar cápsula', 'Save capsule'),
               isLoading: _isSaving,
               onPressed: _create,
             ),
             const SizedBox(height: 8),
             AetheraButton(
               label: context.tr(
-                'Abrir una capsula lista',
+                'Abrir una cápsula lista',
                 'Open a ready capsule',
               ),
               variant: AetheraButtonVariant.ghost,
@@ -1557,7 +1742,7 @@ class _OpenedCapsuleSheet extends StatelessWidget {
               Expanded(
                 child: Text(
                   capsule.title.isEmpty
-                      ? context.tr('Capsula del tiempo', 'Time capsule')
+                      ? context.tr('Cápsula del tiempo', 'Time capsule')
                       : capsule.title,
                   style: AetheraTokens.displaySmall(),
                 ),
@@ -1688,7 +1873,7 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
                       onTapCancel: () => setState(() => _hoveredMood = null),
                       onTap: () => widget.onSelect(mood),
                       child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
+                            duration: AetheraMotion.short,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 6,
@@ -1712,7 +1897,7 @@ class _EmotionCheckInSheetState extends State<_EmotionCheckInSheet> {
                               children: [
                                 AnimatedScale(
                                   scale: isHovered ? 1.15 : 1.0,
-                                  duration: const Duration(milliseconds: 150),
+                                  duration: AetheraMotion.short,
                                   child: EmotionOrb(
                                     mood: mood,
                                     size: isSelected ? 62 : 54,
@@ -1857,7 +2042,7 @@ class _AddMemorySheetState extends State<_AddMemorySheet> {
                       return GestureDetector(
                         onTap: () => setState(() => _selectedType = type),
                         child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
+                          duration: AetheraMotion.short,
                           margin: const EdgeInsets.only(right: 10),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -2082,7 +2267,7 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
                       return GestureDetector(
                         onTap: () => setState(() => _selectedSymbol = symbol),
                         child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
+                          duration: AetheraMotion.short,
                           margin: const EdgeInsets.only(right: 10),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -2547,7 +2732,7 @@ class _MusicToggleButtonState extends State<_MusicToggleButton> {
   bool _isPressed = false;
 
   Future<void> _toggle() async {
-    HapticsService.selection();
+    HapticsService.secondaryAction();
     final newMuted = !_isMuted;
     setState(() => _isMuted = newMuted);
     await MusicService.instance.setMuted(newMuted);
@@ -2564,39 +2749,46 @@ class _MusicToggleButtonState extends State<_MusicToggleButton> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: _onTapUp,
-      onTap: _toggle,
-      child: AnimatedScale(
-        scale: _isPressed ? 0.9 : 1,
-        duration: const Duration(milliseconds: 110),
-        curve: Curves.easeOut,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 120),
-          opacity: _isPressed ? 0.9 : 1,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color:
-                  _isMuted
-                      ? Colors.white.withValues(alpha: 0.03)
-                      : AetheraTokens.auroraTeal.withValues(alpha: 0.08),
-              border: Border.all(
+    return Semantics(
+      button: true,
+      label:
+          _isMuted
+              ? context.tr('Activar música', 'Enable music')
+              : context.tr('Silenciar música', 'Mute music'),
+      child: GestureDetector(
+        onTapDown: _onTapDown,
+        onTapUp: _onTapUp,
+        onTapCancel: _onTapUp,
+        onTap: _toggle,
+        child: AnimatedScale(
+          scale: _isPressed ? 0.9 : 1,
+          duration: AetheraMotion.micro,
+          curve: AetheraMotion.enter,
+          child: AnimatedOpacity(
+            duration: AetheraMotion.short,
+            opacity: _isPressed ? 0.9 : 1,
+            child: AnimatedContainer(
+              duration: AetheraMotion.medium,
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
                 color:
                     _isMuted
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : AetheraTokens.auroraTeal.withValues(alpha: 0.3),
+                        ? Colors.white.withValues(alpha: 0.03)
+                        : AetheraTokens.auroraTeal.withValues(alpha: 0.08),
+                border: Border.all(
+                  color:
+                      _isMuted
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : AetheraTokens.auroraTeal.withValues(alpha: 0.3),
+                ),
               ),
-            ),
-            child: Icon(
-              _isMuted ? Icons.music_off_rounded : Icons.music_note_rounded,
-              color: _isMuted ? AetheraTokens.dusk : AetheraTokens.auroraTeal,
-              size: 14,
+              child: Icon(
+                _isMuted ? Icons.music_off_rounded : Icons.music_note_rounded,
+                color: _isMuted ? AetheraTokens.dusk : AetheraTokens.auroraTeal,
+                size: 14,
+              ),
             ),
           ),
         ),
@@ -2623,7 +2815,7 @@ class _PulseFABState extends State<_PulseFAB>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: AetheraMotion.screenSlow,
     );
     _scale = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.35), weight: 40),
@@ -2639,34 +2831,38 @@ class _PulseFABState extends State<_PulseFAB>
   }
 
   Future<void> _handleTap() async {
-    HapticsService.medium();
+    HapticsService.primaryAction();
     widget.onTap();
     _ctrl.forward(from: 0);
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _handleTap,
-      child: SizedBox(
-        width: 60,
-        height: 54,
-        child: Center(
-          child: ScaleTransition(
-            scale: _scale,
-            child: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AetheraTokens.auroraGradient,
-                boxShadow: AetheraTokens.auroraGlow(),
-              ),
-              child: const Icon(
-                Icons.favorite_rounded,
-                color: AetheraTokens.deepSpace,
-                size: 24,
+    return Semantics(
+      button: true,
+      label: context.tr('Enviar pulso', 'Send pulse'),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _handleTap,
+        child: SizedBox(
+          width: 60,
+          height: 54,
+          child: Center(
+            child: ScaleTransition(
+              scale: _scale,
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AetheraTokens.auroraGradient,
+                  boxShadow: AetheraTokens.auroraGlow(),
+                ),
+                child: const Icon(
+                  Icons.favorite_rounded,
+                  color: AetheraTokens.deepSpace,
+                  size: 24,
+                ),
               ),
             ),
           ),

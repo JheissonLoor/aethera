@@ -9,6 +9,7 @@ import 'package:aethera/features/onboarding/onboarding_screen.dart';
 import 'package:aethera/features/profile/profile_screen.dart';
 import 'package:aethera/core/providers/app_state_notifier.dart';
 import 'package:aethera/core/services/telemetry_service.dart';
+import 'package:aethera/core/theme/aethera_motion.dart';
 
 abstract class AetheraRoutes {
   static const String splash = '/';
@@ -40,9 +41,7 @@ GoRouter createAppRouter({
     debugLogDiagnostics: false,
     refreshListenable: notifier,
     redirect: (context, state) => _redirect(notifier, state),
-    observers: [
-      if (includeTelemetryObserver) TelemetryNavigationObserver(),
-    ],
+    observers: [if (includeTelemetryObserver) TelemetryNavigationObserver()],
     routes: [
       GoRoute(
         path: AetheraRoutes.splash,
@@ -91,7 +90,8 @@ GoRouter createAppRouter({
             (context, state) => _fadeTransition(
               state: state,
               routeName: 'onboarding',
-              child: onboardingBuilder?.call(context) ?? const OnboardingScreen(),
+              child:
+                  onboardingBuilder?.call(context) ?? const OnboardingScreen(),
             ),
       ),
       GoRoute(
@@ -102,7 +102,7 @@ GoRouter createAppRouter({
               key: state.pageKey,
               name: 'profile',
               child: profileBuilder?.call(context) ?? const ProfileScreen(),
-              transitionDuration: const Duration(milliseconds: 500),
+              transitionDuration: AetheraMotion.screen,
               transitionsBuilder:
                   (context, animation, _, child) => SlideTransition(
                     position: Tween(
@@ -111,7 +111,7 @@ GoRouter createAppRouter({
                     ).animate(
                       CurvedAnimation(
                         parent: animation,
-                        curve: Curves.easeOutCubic,
+                        curve: AetheraMotion.enter,
                       ),
                     ),
                     child: child,
@@ -126,12 +126,12 @@ GoRouter createAppRouter({
               key: state.pageKey,
               name: 'ritual',
               child: ritualBuilder?.call(context) ?? const RitualScreen(),
-              transitionDuration: const Duration(milliseconds: 600),
+              transitionDuration: AetheraMotion.screenSlow,
               transitionsBuilder:
                   (context, animation, _, child) => FadeTransition(
                     opacity: CurvedAnimation(
                       parent: animation,
-                      curve: Curves.easeIn,
+                      curve: AetheraMotion.fade,
                     ),
                     child: child,
                   ),
@@ -191,10 +191,10 @@ CustomTransitionPage<void> _fadeTransition({
     key: state.pageKey,
     name: routeName,
     child: child,
-    transitionDuration: const Duration(milliseconds: 800),
+    transitionDuration: AetheraMotion.screen,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       return FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut),
+        opacity: CurvedAnimation(parent: animation, curve: AetheraMotion.fade),
         child: child,
       );
     },

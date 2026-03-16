@@ -5,6 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:aethera/core/services/haptics_service.dart';
+import 'package:aethera/core/theme/aethera_motion.dart';
 import 'package:aethera/core/theme/aethera_tokens.dart';
 import 'package:aethera/core/router/app_router.dart';
 import 'package:aethera/core/constants/app_constants.dart';
@@ -31,8 +33,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   @override
   void initState() {
     super.initState();
-    _ringCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1400))
+    _ringCtrl = AnimationController(vsync: this, duration: AetheraMotion.long)
       ..forward();
   }
 
@@ -50,16 +51,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     final myUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
     final isUser1 = couple?.user1Id == myUserId;
 
-    final myMood = isUser1
-        ? couple?.user1Emotion?.mood ?? 'neutral'
-        : couple?.user2Emotion?.mood ?? 'neutral';
-    final partnerMood = isUser1
-        ? couple?.user2Emotion?.mood ?? 'neutral'
-        : couple?.user1Emotion?.mood ?? 'neutral';
+    final myMood =
+        isUser1
+            ? couple?.user1Emotion?.mood ?? 'neutral'
+            : couple?.user2Emotion?.mood ?? 'neutral';
+    final partnerMood =
+        isUser1
+            ? couple?.user2Emotion?.mood ?? 'neutral'
+            : couple?.user1Emotion?.mood ?? 'neutral';
 
-    final daysTogether = couple != null
-        ? DateTime.now().difference(couple.createdAt).inDays
-        : 0;
+    final daysTogether =
+        couple != null ? DateTime.now().difference(couple.createdAt).inDays : 0;
 
     final memoryCount = state.memories.length;
     final goalsCompleted = state.goals.where((g) => g.isCompleted).length;
@@ -71,159 +73,175 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         fit: StackFit.expand,
         children: [
           const CosmicBackground(),
-
-          // Subtle gradient overlay
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  AetheraTokens.nebulaPurple.withValues(alpha: 0.08),
+                  AetheraTokens.nebulaPurple.withValues(alpha: 0.1),
                   Colors.transparent,
-                  AetheraTokens.deepSpace.withValues(alpha: 0.3),
+                  AetheraTokens.deepSpace.withValues(alpha: 0.4),
                 ],
               ),
             ),
           ),
-
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ── Top bar ──────────────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Row(
                       children: [
-                        GestureDetector(
-                          onTap: () => context.pop(),
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.08),
-                              border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.15)),
+                        Semantics(
+                          button: true,
+                          label: 'Volver',
+                          child: GestureDetector(
+                            onTap: () {
+                              HapticsService.navigation();
+                              context.pop();
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.08),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_back_rounded,
+                                color: AetheraTokens.moonGlow,
+                                size: 20,
+                              ),
                             ),
-                            child: Icon(Icons.arrow_back_rounded,
-                                color: AetheraTokens.moonGlow, size: 20),
                           ),
                         ),
                         const SizedBox(width: 14),
-                        Text('Tu universo', style: AetheraTokens.displaySmall()),
-                      ],
-                    ),
-                  ).animate().fadeIn(duration: 500.ms),
-
-                  const SizedBox(height: 16),
-
-                  // ── Connection ring ───────────────────────────────────
-                  Center(
-                    child: AnimatedBuilder(
-                      animation: _ringCtrl,
-                      builder: (_, __) {
-                        final progress = Curves.easeOutCubic
-                            .transform(_ringCtrl.value);
-                        return _ConnectionRing(
-                          strength: state.connectionStrength,
-                          level: state.universeLevel,
-                          animatedProgress: progress,
-                          myMood: myMood,
-                          partnerMood: partnerMood,
-                          partnerOnline: state.partnerOnline,
-                        );
-                      },
-                    ),
-                  ).animate().fadeIn(delay: 150.ms).scale(
-                      begin: const Offset(0.85, 0.85),
-                      curve: Curves.easeOutBack),
-
-                  const SizedBox(height: 28),
-
-                  // ── Days together ─────────────────────────────────────
-                  AetheraGlassPanel(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('🌙', style: TextStyle(fontSize: 18)),
-                        const SizedBox(width: 10),
-                        Text(
-                          '$daysTogether días creando su universo',
-                          style: AetheraTokens.bodyMedium(
-                              color: AetheraTokens.starlight),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Perfil del universo',
+                                style: AetheraTokens.displaySmall(),
+                              ),
+                              Text(
+                                'Resumen de conexión y progreso',
+                                style: AetheraTokens.bodySmall(
+                                  color: AetheraTokens.moonGlow,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1, end: 0),
-
-                  const SizedBox(height: 16),
-
-                  // ── Stats grid ────────────────────────────────────────
+                  ).animate().fadeIn(duration: 500.ms),
+                  _ProfileHeroCard(
+                    daysTogether: daysTogether,
+                    connectionStrength: state.connectionStrength,
+                    level: state.universeLevel,
+                    partnerOnline: state.partnerOnline,
+                  ).animate().fadeIn(delay: 80.ms).slideY(begin: 0.08, end: 0),
+                  const SizedBox(height: 18),
+                  Center(
+                        child: AnimatedBuilder(
+                          animation: _ringCtrl,
+                          builder: (_, __) {
+                            final progress = Curves.easeOutCubic.transform(
+                              _ringCtrl.value,
+                            );
+                            return _ConnectionRing(
+                              strength: state.connectionStrength,
+                              level: state.universeLevel,
+                              animatedProgress: progress,
+                              myMood: myMood,
+                              partnerMood: partnerMood,
+                              partnerOnline: state.partnerOnline,
+                            );
+                          },
+                        ),
+                      )
+                      .animate()
+                      .fadeIn(delay: 180.ms)
+                      .scale(
+                        begin: const Offset(0.9, 0.9),
+                        curve: Curves.easeOutBack,
+                      ),
+                  const SizedBox(height: 20),
+                  const _SectionHeader(
+                    title: 'Actividad',
+                    subtitle: 'Tu progreso en este universo compartido',
+                  ),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: _StatCard(
-                          emoji: '✦',
-                          value: '$memoryCount',
-                          label: 'Memorias',
-                          color: AetheraTokens.auroraTeal,
-                        ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
+                              icon: Icons.auto_awesome_rounded,
+                              value: '$memoryCount',
+                              label: 'Memorias',
+                              color: AetheraTokens.auroraTeal,
+                            )
+                            .animate()
+                            .fadeIn(delay: 260.ms)
+                            .slideY(begin: 0.08, end: 0),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _StatCard(
-                          emoji: '🎯',
-                          value: '$goalsCompleted/$goalsTotal',
-                          label: 'Metas',
-                          color: AetheraTokens.goldenDawn,
-                        ).animate().fadeIn(delay: 480.ms).slideY(begin: 0.1, end: 0),
+                              icon: Icons.flag_rounded,
+                              value: '$goalsCompleted/$goalsTotal',
+                              label: 'Metas',
+                              color: AetheraTokens.goldenDawn,
+                            )
+                            .animate()
+                            .fadeIn(delay: 320.ms)
+                            .slideY(begin: 0.08, end: 0),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _StatCard(
-                          emoji: '⭐',
-                          value: '${state.universeLevel}',
-                          label: 'Nivel',
-                          color: AetheraTokens.nebulaPurple,
-                        ).animate().fadeIn(delay: 560.ms).slideY(begin: 0.1, end: 0),
+                              icon: Icons.trending_up_rounded,
+                              value: '${state.universeLevel}',
+                              label: 'Nivel',
+                              color: AetheraTokens.nebulaPurple,
+                            )
+                            .animate()
+                            .fadeIn(delay: 380.ms)
+                            .slideY(begin: 0.08, end: 0),
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 16),
-
-                  // ── Universe level progress ───────────────────────────
                   _LevelProgressCard(
                     connectionStrength: state.connectionStrength,
                     level: state.universeLevel,
-                  ).animate().fadeIn(delay: 600.ms),
-
+                  ).animate().fadeIn(delay: 440.ms),
                   const SizedBox(height: 16),
-
-                  // ── Invite code ───────────────────────────────────────
                   if (couple?.inviteCode != null) ...[
                     _InviteCodeCard(
                       code: couple!.inviteCode,
                       copied: _codeCopied,
                       onCopy: () async {
+                        HapticsService.secondaryAction();
                         await Clipboard.setData(
-                            ClipboardData(text: couple.inviteCode));
+                          ClipboardData(text: couple.inviteCode),
+                        );
                         setState(() => _codeCopied = true);
-                        Future.delayed(const Duration(seconds: 2), () {
+                        Future<void>.delayed(const Duration(seconds: 2), () {
                           if (mounted) setState(() => _codeCopied = false);
                         });
                       },
-                    ).animate().fadeIn(delay: 700.ms),
+                    ).animate().fadeIn(delay: 500.ms),
                     const SizedBox(height: 16),
                   ],
-
-                  // ── Connect with partner (solo mode) ──────────────────
                   if (couple?.isSolo == true) ...[
                     _ConnectPartnerCard(
                       codeCtrl: _joinCodeCtrl,
@@ -231,6 +249,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       onJoin: () async {
                         final code = _joinCodeCtrl.text.trim();
                         if (code.isEmpty) return;
+                        HapticsService.primaryAction();
                         setState(() => _isJoining = true);
                         final messenger = ScaffoldMessenger.of(context);
                         final error = await ref
@@ -239,6 +258,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         if (!mounted) return;
                         setState(() => _isJoining = false);
                         if (error != null) {
+                          HapticsService.secondaryAction();
                           messenger.showSnackBar(
                             SnackBar(
                               content: Text(error),
@@ -246,20 +266,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                             ),
                           );
                         } else {
+                          HapticsService.affirmation();
                           _joinCodeCtrl.clear();
                           messenger.showSnackBar(
                             const SnackBar(
                               content: Text(
-                                  '¡Conectados! Vuestro universo compartido está listo 💕'),
+                                'Conectados. Universo compartido listo.',
+                              ),
                             ),
                           );
                         }
                       },
-                    ).animate().fadeIn(delay: 750.ms),
+                    ).animate().fadeIn(delay: 560.ms),
                     const SizedBox(height: 16),
                   ],
-
-                  // ── Sign out ──────────────────────────────────────────
                   AetheraButton(
                     label: 'Cerrar sesión',
                     variant: AetheraButtonVariant.outlined,
@@ -267,7 +287,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       await FirebaseAuth.instance.signOut();
                       if (context.mounted) context.go(AetheraRoutes.auth);
                     },
-                  ).animate().fadeIn(delay: 800.ms),
+                  ).animate().fadeIn(delay: 620.ms),
                 ],
               ),
             ),
@@ -279,6 +299,116 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 }
 
 // ─── Connection Ring ──────────────────────────────────────────────────────────
+
+class _ProfileHeroCard extends StatelessWidget {
+  final int daysTogether;
+  final int connectionStrength;
+  final int level;
+  final bool partnerOnline;
+
+  const _ProfileHeroCard({
+    required this.daysTogether,
+    required this.connectionStrength,
+    required this.level,
+    required this.partnerOnline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AetheraGlassPanel(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  AetheraTokens.auroraTeal.withValues(alpha: 0.35),
+                  AetheraTokens.nebulaPurple.withValues(alpha: 0.25),
+                ],
+              ),
+              border: Border.all(
+                color: AetheraTokens.auroraTeal.withValues(alpha: 0.35),
+              ),
+            ),
+            child: const Icon(
+              Icons.nightlight_round,
+              color: AetheraTokens.starlight,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$daysTogether días construyendo este universo',
+                  style: AetheraTokens.bodyMedium(
+                    color: AetheraTokens.starlight,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Nivel $level - Conexión $connectionStrength%',
+                  style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color:
+                  partnerOnline ? AetheraTokens.auroraTeal : AetheraTokens.dusk,
+              boxShadow:
+                  partnerOnline
+                      ? [
+                        BoxShadow(
+                          color: AetheraTokens.auroraTeal.withValues(
+                            alpha: 0.6,
+                          ),
+                          blurRadius: 8,
+                        ),
+                      ]
+                      : const [],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _SectionHeader({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+        ),
+      ],
+    );
+  }
+}
 
 class _ConnectionRing extends StatelessWidget {
   final int strength;
@@ -299,20 +429,28 @@ class _ConnectionRing extends StatelessWidget {
 
   static Color _emotionColor(String mood) {
     switch (mood) {
-      case 'joy': return AetheraTokens.goldenDawn;
-      case 'love': return AetheraTokens.roseQuartz;
-      case 'peace': return AetheraTokens.auroraTeal;
-      case 'longing': return AetheraTokens.nebulaPurple;
-      case 'melancholy': return AetheraTokens.dusk;
-      case 'anxious': return AetheraTokens.emotionAnxious;
-      default: return AetheraTokens.moonGlow;
+      case 'joy':
+        return AetheraTokens.goldenDawn;
+      case 'love':
+        return AetheraTokens.roseQuartz;
+      case 'peace':
+        return AetheraTokens.auroraTeal;
+      case 'longing':
+        return AetheraTokens.nebulaPurple;
+      case 'melancholy':
+        return AetheraTokens.dusk;
+      case 'anxious':
+        return AetheraTokens.emotionAnxious;
+      default:
+        return AetheraTokens.moonGlow;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final displayProgress = (strength / AppConstants.maxConnectionStrength)
-        .clamp(0.0, 1.0) * animatedProgress;
+    final displayProgress =
+        (strength / AppConstants.maxConnectionStrength).clamp(0.0, 1.0) *
+        animatedProgress;
 
     return SizedBox(
       width: 220,
@@ -340,10 +478,11 @@ class _ConnectionRing extends StatelessWidget {
                 children: [
                   EmotionOrb(mood: myMood, size: 40, animated: false),
                   const SizedBox(width: 8),
-                  Text('✦',
-                      style: TextStyle(
-                          color: AetheraTokens.moonGlow.withValues(alpha: 0.4),
-                          fontSize: 12)),
+                  Icon(
+                    Icons.circle,
+                    size: 6,
+                    color: AetheraTokens.moonGlow.withValues(alpha: 0.4),
+                  ),
                   const SizedBox(width: 8),
                   EmotionOrb(mood: partnerMood, size: 40, animated: false),
                 ],
@@ -359,17 +498,22 @@ class _ConnectionRing extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   color: AetheraTokens.nebulaPurple.withValues(alpha: 0.2),
                   border: Border.all(
-                      color: AetheraTokens.nebulaPurple.withValues(alpha: 0.4)),
+                    color: AetheraTokens.nebulaPurple.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Text(
                   'Nivel $level',
                   style: AetheraTokens.labelSmall(
-                      color: AetheraTokens.nebulaPurple),
+                    color: AetheraTokens.nebulaPurple,
+                  ),
                 ),
               ),
             ],
@@ -411,24 +555,19 @@ class _RingPainter extends CustomPainter {
     // Progress arc with gradient
     if (progress > 0) {
       final rect = Rect.fromCircle(center: Offset(cx, cy), radius: radius);
-      final paint = Paint()
-        ..shader = SweepGradient(
-          startAngle: -pi / 2,
-          endAngle: -pi / 2 + 2 * pi * progress,
-          colors: [myColor, partnerColor],
-          stops: const [0.0, 1.0],
-        ).createShader(rect)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
+      final paint =
+          Paint()
+            ..shader = SweepGradient(
+              startAngle: -pi / 2,
+              endAngle: -pi / 2 + 2 * pi * progress,
+              colors: [myColor, partnerColor],
+              stops: const [0.0, 1.0],
+            ).createShader(rect)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = strokeWidth
+            ..strokeCap = StrokeCap.round;
 
-      canvas.drawArc(
-        rect,
-        -pi / 2,
-        2 * pi * progress,
-        false,
-        paint,
-      );
+      canvas.drawArc(rect, -pi / 2, 2 * pi * progress, false, paint);
 
       // Glow on the progress tip
       final tipAngle = -pi / 2 + 2 * pi * progress;
@@ -457,8 +596,10 @@ class _LevelProgressCard extends StatelessWidget {
   final int connectionStrength;
   final int level;
 
-  const _LevelProgressCard(
-      {required this.connectionStrength, required this.level});
+  const _LevelProgressCard({
+    required this.connectionStrength,
+    required this.level,
+  });
 
   static const _levelNames = {
     1: 'Nebulosa Naciente',
@@ -468,21 +609,21 @@ class _LevelProgressCard extends StatelessWidget {
     5: 'Universo Eterno',
   };
 
-  static const _levelEmojis = {
-    1: '🌌',
-    2: '⭐',
-    3: '🌠',
-    4: '✨',
-    5: '🌟',
+  static const _levelIcons = {
+    1: Icons.blur_on_rounded,
+    2: Icons.star_rounded,
+    3: Icons.auto_awesome_rounded,
+    4: Icons.rocket_launch_rounded,
+    5: Icons.workspace_premium_rounded,
   };
 
   @override
   Widget build(BuildContext context) {
     final currentThreshold = (level - 1) * 20;
     final nextThreshold = level * 20;
-    final progressInLevel =
-        ((connectionStrength - currentThreshold) / (nextThreshold - currentThreshold))
-            .clamp(0.0, 1.0);
+    final progressInLevel = ((connectionStrength - currentThreshold) /
+            (nextThreshold - currentThreshold))
+        .clamp(0.0, 1.0);
 
     return AetheraGlassPanel(
       padding: const EdgeInsets.all(20),
@@ -491,20 +632,26 @@ class _LevelProgressCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(_levelEmojis[level] ?? '✨',
-                  style: const TextStyle(fontSize: 20)),
+              Icon(
+                _levelIcons[level] ?? Icons.auto_awesome_rounded,
+                size: 20,
+                color: AetheraTokens.goldenDawn,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_levelNames[level] ?? 'Nivel $level',
-                        style: AetheraTokens.bodyLarge()),
+                    Text(
+                      _levelNames[level] ?? 'Nivel $level',
+                      style: AetheraTokens.bodyLarge(),
+                    ),
                     if (level < 5)
                       Text(
                         'Próximo nivel a $nextThreshold% conexión',
                         style: AetheraTokens.bodySmall(
-                            color: AetheraTokens.moonGlow),
+                          color: AetheraTokens.moonGlow,
+                        ),
                       ),
                   ],
                 ),
@@ -518,18 +665,17 @@ class _LevelProgressCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progressInLevel,
                 minHeight: 4,
-                backgroundColor:
-                    AetheraTokens.moonGlow.withValues(alpha: 0.1),
+                backgroundColor: AetheraTokens.moonGlow.withValues(alpha: 0.1),
                 valueColor: const AlwaysStoppedAnimation<Color>(
-                    AetheraTokens.auroraTeal),
+                  AetheraTokens.auroraTeal,
+                ),
               ),
             ),
           ] else ...[
             const SizedBox(height: 8),
             Text(
-              '¡Has alcanzado el nivel máximo! 🌟',
-              style: AetheraTokens.bodySmall(
-                  color: AetheraTokens.goldenDawn),
+              'Has alcanzado el nivel máximo.',
+              style: AetheraTokens.bodySmall(color: AetheraTokens.goldenDawn),
             ),
           ],
         ],
@@ -541,13 +687,13 @@ class _LevelProgressCard extends StatelessWidget {
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
 class _StatCard extends StatelessWidget {
-  final String emoji;
+  final IconData icon;
   final String value;
   final String label;
   final Color color;
 
   const _StatCard({
-    required this.emoji,
+    required this.icon,
     required this.value,
     required this.label,
     required this.color,
@@ -560,16 +706,20 @@ class _StatCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
+          Icon(icon, size: 20, color: color),
           const SizedBox(height: 6),
-          Text(value,
-              style: AetheraTokens.displaySmall().copyWith(
-                color: color,
-                fontSize: 22,
-              )),
+          Text(
+            value,
+            style: AetheraTokens.displaySmall().copyWith(
+              color: color,
+              fontSize: 22,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(label,
-              style: AetheraTokens.labelSmall(color: AetheraTokens.moonGlow)),
+          Text(
+            label,
+            style: AetheraTokens.labelSmall(color: AetheraTokens.moonGlow),
+          ),
         ],
       ),
     );
@@ -602,24 +752,33 @@ class _ConnectPartnerCard extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(colors: [
-                    AetheraTokens.auroraTeal.withValues(alpha: 0.3),
-                    AetheraTokens.nebulaPurple.withValues(alpha: 0.1),
-                  ]),
+                  gradient: RadialGradient(
+                    colors: [
+                      AetheraTokens.auroraTeal.withValues(alpha: 0.3),
+                      AetheraTokens.nebulaPurple.withValues(alpha: 0.1),
+                    ],
+                  ),
                 ),
-                child: const Text('💫', style: TextStyle(fontSize: 18)),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AetheraTokens.starlight,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Conectar con tu pareja',
-                        style: AetheraTokens.bodyLarge()),
                     Text(
-                      'Tu pareja creó un universo? Ingresa su código',
-                      style:
-                          AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+                      'Conectar con tu pareja',
+                      style: AetheraTokens.bodyLarge(),
+                    ),
+                    Text(
+                      '¿Tu pareja creó un universo? Ingresa su código',
+                      style: AetheraTokens.bodySmall(
+                        color: AetheraTokens.moonGlow,
+                      ),
                     ),
                   ],
                 ),
@@ -650,59 +809,74 @@ class _ConnectPartnerCard extends StatelessWidget {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                          color: AetheraTokens.moonGlow.withValues(alpha: 0.15)),
+                        color: AetheraTokens.moonGlow.withValues(alpha: 0.15),
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                          color: AetheraTokens.moonGlow.withValues(alpha: 0.15)),
+                        color: AetheraTokens.moonGlow.withValues(alpha: 0.15),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                          color: AetheraTokens.auroraTeal.withValues(alpha: 0.5)),
+                        color: AetheraTokens.auroraTeal.withValues(alpha: 0.5),
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
-              GestureDetector(
-                onTap: isLoading ? null : onJoin,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: isLoading
-                        ? null
-                        : LinearGradient(
-                            colors: [
-                              AetheraTokens.auroraTeal,
-                              AetheraTokens.nebulaPurple,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                    color: isLoading
-                        ? AetheraTokens.moonGlow.withValues(alpha: 0.2)
-                        : null,
-                  ),
-                  child: isLoading
-                      ? const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
+              Semantics(
+                button: true,
+                label: 'Conectar pareja',
+                child: GestureDetector(
+                  onTap: isLoading ? null : onJoin,
+                  child: AnimatedContainer(
+                    duration: AetheraMotion.medium,
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient:
+                          isLoading
+                              ? null
+                              : LinearGradient(
+                                colors: [
+                                  AetheraTokens.auroraTeal,
+                                  AetheraTokens.nebulaPurple,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                      color:
+                          isLoading
+                              ? AetheraTokens.moonGlow.withValues(alpha: 0.2)
+                              : null,
+                    ),
+                    child:
+                        isLoading
+                            ? const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            )
+                            : const Icon(
+                              Icons.arrow_forward_rounded,
                               color: Colors.white,
+                              size: 22,
                             ),
-                          ),
-                        )
-                      : const Icon(Icons.arrow_forward_rounded,
-                          color: Colors.white, size: 22),
+                  ),
                 ),
               ),
             ],
@@ -733,20 +907,25 @@ class _InviteCodeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Código de invitación',
-              style: AetheraTokens.labelLarge(color: AetheraTokens.moonGlow)),
+          Text(
+            'Código de invitación',
+            style: AetheraTokens.labelLarge(color: AetheraTokens.moonGlow),
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     color: Colors.white.withValues(alpha: 0.04),
                     border: Border.all(
-                        color: AetheraTokens.moonGlow.withValues(alpha: 0.15)),
+                      color: AetheraTokens.moonGlow.withValues(alpha: 0.15),
+                    ),
                   ),
                   child: Text(
                     code,
@@ -758,28 +937,40 @@ class _InviteCodeCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              GestureDetector(
-                onTap: onCopy,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: copied
-                        ? AetheraTokens.auroraTeal.withValues(alpha: 0.15)
-                        : Colors.white.withValues(alpha: 0.06),
-                    border: Border.all(
-                      color: copied
-                          ? AetheraTokens.auroraTeal.withValues(alpha: 0.4)
-                          : AetheraTokens.moonGlow.withValues(alpha: 0.15),
+              Semantics(
+                button: true,
+                label:
+                    copied ? 'Código copiado' : 'Copiar código de invitación',
+                child: GestureDetector(
+                  onTap: onCopy,
+                  child: AnimatedContainer(
+                    duration: AetheraMotion.medium,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color:
+                          copied
+                              ? AetheraTokens.auroraTeal.withValues(alpha: 0.15)
+                              : Colors.white.withValues(alpha: 0.06),
+                      border: Border.all(
+                        color:
+                            copied
+                                ? AetheraTokens.auroraTeal.withValues(
+                                  alpha: 0.4,
+                                )
+                                : AetheraTokens.moonGlow.withValues(
+                                  alpha: 0.15,
+                                ),
+                      ),
                     ),
-                  ),
-                  child: Icon(
-                    copied ? Icons.check_rounded : Icons.copy_rounded,
-                    color: copied
-                        ? AetheraTokens.auroraTeal
-                        : AetheraTokens.moonGlow,
-                    size: 18,
+                    child: Icon(
+                      copied ? Icons.check_rounded : Icons.copy_rounded,
+                      color:
+                          copied
+                              ? AetheraTokens.auroraTeal
+                              : AetheraTokens.moonGlow,
+                      size: 18,
+                    ),
                   ),
                 ),
               ),

@@ -29,4 +29,12 @@ abstract class HapticsService {
     if (!_isSupported) return;
     await HapticFeedback.heavyImpact();
   }
+
+  static Future<void> navigation() => light();
+
+  static Future<void> secondaryAction() => selection();
+
+  static Future<void> primaryAction() => medium();
+
+  static Future<void> affirmation() => success();
 }

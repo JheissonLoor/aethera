@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:aethera/core/services/haptics_service.dart';
+import 'package:aethera/core/theme/aethera_motion.dart';
 import 'package:aethera/core/theme/aethera_tokens.dart';
 import 'package:aethera/features/auth/providers/auth_provider.dart';
 import 'package:aethera/features/universe/widgets/cosmic_background.dart';
@@ -35,12 +37,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   }
 
   void _toggleMode() {
+    HapticsService.secondaryAction();
     ref.read(authProvider.notifier).resetError();
     setState(() => _isRegister = !_isRegister);
   }
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    HapticsService.primaryAction();
     final notifier = ref.read(authProvider.notifier);
     if (_isRegister) {
       await notifier.register(
@@ -88,30 +92,51 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               behavior: HitTestBehavior.opaque,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 40,
+                  horizontal: 24,
+                  vertical: 28,
                 ),
                 child: Column(
                   children: [
                     _buildHeader()
                         .animate()
-                        .fadeIn(duration: 700.ms)
-                        .slideY(begin: -0.15, end: 0, curve: Curves.easeOut),
-                    const SizedBox(height: 48),
+                        .fadeIn(duration: AetheraMotion.emphasized)
+                        .slideY(
+                          begin: -0.15,
+                          end: 0,
+                          curve: AetheraMotion.enter,
+                        ),
+                    const SizedBox(height: 22),
+                    _buildModeSwitch().animate().fadeIn(
+                      delay: AetheraMotion.stagger,
+                      duration: AetheraMotion.emphasized,
+                    ),
+                    const SizedBox(height: 18),
                     _buildForm(authState)
                         .animate()
-                        .fadeIn(delay: 200.ms, duration: 600.ms)
-                        .slideY(begin: 0.15, end: 0, curve: Curves.easeOut),
-                    const SizedBox(height: 28),
+                        .fadeIn(
+                          delay: AetheraMotion.stagger * 2,
+                          duration: AetheraMotion.screen,
+                        )
+                        .slideY(
+                          begin: 0.15,
+                          end: 0,
+                          curve: AetheraMotion.enter,
+                        ),
+                    const SizedBox(height: 14),
+                    _buildTrustRow().animate().fadeIn(
+                      delay: AetheraMotion.stagger * 3,
+                      duration: AetheraMotion.screen,
+                    ),
+                    const SizedBox(height: 22),
                     _buildToggle().animate().fadeIn(
-                      delay: 400.ms,
-                      duration: 500.ms,
+                      delay: AetheraMotion.stagger * 4,
+                      duration: AetheraMotion.screen,
                     ),
                     if (!_isRegister) ...[
                       const SizedBox(height: 16),
                       _buildForgotPassword().animate().fadeIn(
-                        delay: 500.ms,
-                        duration: 400.ms,
+                        delay: AetheraMotion.stagger * 5,
+                        duration: AetheraMotion.emphasized,
                       ),
                     ],
                   ],
@@ -127,6 +152,37 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   Widget _buildHeader() {
     return Column(
       children: [
+        Container(
+          width: 74,
+          height: 74,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AetheraTokens.auroraTeal.withValues(alpha: 0.32),
+                AetheraTokens.nebulaPurple.withValues(alpha: 0.24),
+              ],
+            ),
+            border: Border.all(
+              color: AetheraTokens.auroraTeal.withValues(alpha: 0.35),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AetheraTokens.auroraTeal.withValues(alpha: 0.24),
+                blurRadius: 26,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.auto_awesome_rounded,
+            color: AetheraTokens.starlight,
+            size: 34,
+          ),
+        ),
+        const SizedBox(height: 14),
         ShaderMask(
           shaderCallback:
               (bounds) => const LinearGradient(
@@ -144,9 +200,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
+        Text(
+          context.tr('acceso emocional privado', 'private emotional access'),
+          style: AetheraTokens.bodySmall(
+            color: AetheraTokens.moonGlow.withValues(alpha: 0.9),
+          ).copyWith(letterSpacing: 1.2),
+        ),
+        const SizedBox(height: 6),
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
+          duration: AetheraMotion.emphasized,
           child: Text(
             _isRegister
                 ? context.tr('crea tu universo', 'create your universe')
@@ -169,9 +232,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              _isRegister
+                  ? context.tr('Crear cuenta', 'Create account')
+                  : context.tr('Iniciar sesion', 'Sign in'),
+              style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _isRegister
+                  ? context.tr(
+                    'Configura tu acceso para comenzar.',
+                    'Set up your access to begin.',
+                  )
+                  : context.tr(
+                    'Ingresa para volver a tu universo.',
+                    'Sign in to return to your universe.',
+                  ),
+              style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+            ),
+            const SizedBox(height: 18),
             AnimatedSize(
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeInOut,
+              duration: AetheraMotion.emphasized,
+              curve: AetheraMotion.standard,
               child:
                   _isRegister
                       ? Column(
@@ -250,13 +333,127 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             AetheraButton(
               label:
                   _isRegister
-                      ? context.tr('Crear universo', 'Create universe')
-                      : context.tr('Entrar', 'Sign in'),
+                      ? context.tr('Crear cuenta', 'Create account')
+                      : context.tr('Entrar ahora', 'Sign in now'),
               isLoading: authState is AsyncLoading,
               onPressed: _submit,
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildModeSwitch() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: Colors.white.withValues(alpha: 0.04),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildModePill(
+              selected: !_isRegister,
+              label: context.tr('Entrar', 'Sign in'),
+              onTap: () {
+                if (!_isRegister) return;
+                _toggleMode();
+              },
+            ),
+          ),
+          Expanded(
+            child: _buildModePill(
+              selected: _isRegister,
+              label: context.tr('Crear cuenta', 'Create account'),
+              onTap: () {
+                if (_isRegister) return;
+                _toggleMode();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModePill({
+    required bool selected,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AetheraMotion.medium,
+        curve: AetheraMotion.enter,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          color:
+              selected
+                  ? AetheraTokens.auroraTeal.withValues(alpha: 0.16)
+                  : Colors.transparent,
+          border:
+              selected
+                  ? Border.all(
+                    color: AetheraTokens.auroraTeal.withValues(alpha: 0.4),
+                  )
+                  : null,
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: AetheraTokens.bodyMedium(
+            color: selected ? AetheraTokens.auroraTeal : AetheraTokens.moonGlow,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrustRow() {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _buildTrustChip(
+          icon: Icons.verified_user_outlined,
+          label: context.tr('Sesion segura', 'Secure session'),
+        ),
+        _buildTrustChip(
+          icon: Icons.lock_outline_rounded,
+          label: context.tr('Acceso privado', 'Private access'),
+        ),
+        _buildTrustChip(
+          icon: Icons.favorite_outline_rounded,
+          label: context.tr('Solo pareja', 'Couple only'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTrustChip({required IconData icon, required String label}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: Colors.white.withValues(alpha: 0.05),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AetheraTokens.auroraTeal),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AetheraTokens.labelSmall(color: AetheraTokens.moonGlow),
+          ),
+        ],
       ),
     );
   }
@@ -282,7 +479,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         prefixIcon: Icon(icon, color: AetheraTokens.auroraTeal, size: 20),
         suffixIcon: suffix,
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
+        fillColor: Colors.white.withValues(alpha: 0.045),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 16,
+        ),
         border: _inputBorder(AetheraTokens.moonGlow.withValues(alpha: 0.2)),
         enabledBorder: _inputBorder(
           AetheraTokens.moonGlow.withValues(alpha: 0.2),
@@ -305,7 +506,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
   OutlineInputBorder _inputBorder(Color color, {double width = 1.0}) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       borderSide: BorderSide(color: color, width: width),
     );
   }
@@ -403,7 +604,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       button: true,
       label: context.tr('Olvide mi contrasena', 'I forgot my password'),
       child: GestureDetector(
-        onTap: _sendPasswordReset,
+        onTap: () {
+          HapticsService.secondaryAction();
+          _sendPasswordReset();
+        },
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Text(
@@ -420,16 +624,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   }
 
   Widget _buildToggle() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 6,
       children: [
         Text(
           _isRegister
-              ? context.tr(
-                'Ya tienes universo?  ',
-                'Already have a universe?  ',
-              )
-              : context.tr('Primera vez?  ', 'First time?  '),
+              ? context.tr('Ya tienes universo?', 'Already have a universe?')
+              : context.tr('Primera vez en Aethera?', 'First time in Aethera?'),
           style: AetheraTokens.bodyMedium(color: AetheraTokens.moonGlow),
         ),
         Semantics(
@@ -440,15 +643,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                   : context.tr('Crea tu cuenta', 'Create account'),
           child: GestureDetector(
             onTap: _toggleMode,
-            child: Text(
-              _isRegister
-                  ? context.tr('Inicia sesion', 'Sign in')
-                  : context.tr('Crea tu cuenta', 'Create account'),
-              style: AetheraTokens.bodyMedium(
-                color: AetheraTokens.auroraTeal,
-              ).copyWith(
-                decoration: TextDecoration.underline,
-                decorationColor: AetheraTokens.auroraTeal,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                color: AetheraTokens.auroraTeal.withValues(alpha: 0.12),
+                border: Border.all(
+                  color: AetheraTokens.auroraTeal.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Text(
+                _isRegister
+                    ? context.tr('Inicia sesion', 'Sign in')
+                    : context.tr('Crea tu cuenta', 'Create account'),
+                style: AetheraTokens.bodySmall(color: AetheraTokens.auroraTeal),
               ),
             ),
           ),
