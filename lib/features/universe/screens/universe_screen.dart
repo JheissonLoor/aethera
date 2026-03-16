@@ -37,6 +37,35 @@ String _formatDateTimeLabel(BuildContext context, DateTime dateTime) {
   return '$date $time';
 }
 
+Color _moodAccentColor(String mood) {
+  final normalized = mood.toLowerCase();
+  switch (normalized) {
+    case 'happy':
+    case 'feliz':
+      return const Color(0xFFFFC857);
+    case 'sad':
+    case 'triste':
+      return const Color(0xFF7AA2FF);
+    case 'love':
+    case 'amor':
+      return const Color(0xFFFF6B8A);
+    case 'calm':
+    case 'calma':
+      return const Color(0xFF6EE7C8);
+    case 'excited':
+    case 'emocionado':
+      return const Color(0xFFFF9F43);
+    case 'angry':
+    case 'enojado':
+      return const Color(0xFFFF6B6B);
+    case 'anxious':
+    case 'ansioso':
+      return const Color(0xFFB892FF);
+    default:
+      return AetheraTokens.auroraTeal;
+  }
+}
+
 class UniverseScreen extends ConsumerStatefulWidget {
   const UniverseScreen({super.key});
 
@@ -674,6 +703,7 @@ class _TopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final accent = _moodAccentColor(state.combinedMood);
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 12 : 16,
@@ -698,16 +728,12 @@ class _TopBar extends ConsumerWidget {
         ],
         child: Stack(
           children: [
-            const Positioned(
+            Positioned(
               right: -26,
               top: -34,
-              child: _AmbientLensGlow(
-                size: 126,
-                color: AetheraTokens.auroraTeal,
-                opacity: 0.22,
-              ),
+              child: _AmbientLensGlow(size: 126, color: accent, opacity: 0.22),
             ),
-            const Positioned(
+            Positioned(
               left: -42,
               bottom: -58,
               child: _AmbientLensGlow(
@@ -727,7 +753,7 @@ class _TopBar extends ConsumerWidget {
                     gradient: LinearGradient(
                       colors: [
                         Colors.transparent,
-                        AetheraTokens.auroraTeal.withValues(alpha: 0.75),
+                        accent.withValues(alpha: 0.75),
                         Colors.transparent,
                       ],
                     ),
@@ -746,11 +772,8 @@ class _TopBar extends ConsumerWidget {
                         children: [
                           ShaderMask(
                             shaderCallback:
-                                (bounds) => const LinearGradient(
-                                  colors: [
-                                    AetheraTokens.starlight,
-                                    AetheraTokens.auroraTeal,
-                                  ],
+                                (bounds) => LinearGradient(
+                                  colors: [AetheraTokens.starlight, accent],
                                 ).createShader(bounds),
                             child: Text(
                               context.tr('Tu Universo', 'Your Universe'),
@@ -810,6 +833,7 @@ class _TopBar extends ConsumerWidget {
                 _TopPulseLine(
                   strength: state.connectionStrength,
                   partnerOnline: state.partnerOnline,
+                  accent: accent,
                 ),
                 if (state.streakDays >= 2 ||
                     !state.isSyncConnected ||
@@ -844,6 +868,7 @@ class _TopBar extends ConsumerWidget {
                         strength: state.connectionStrength,
                         level: state.universeLevel,
                         compact: compact,
+                        accent: accent,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -926,8 +951,13 @@ class _AmbientLensGlow extends StatelessWidget {
 class _TopPulseLine extends StatelessWidget {
   final int strength;
   final bool partnerOnline;
+  final Color accent;
 
-  const _TopPulseLine({required this.strength, required this.partnerOnline});
+  const _TopPulseLine({
+    required this.strength,
+    required this.partnerOnline,
+    required this.accent,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -947,9 +977,7 @@ class _TopPulseLine extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    partnerOnline
-                        ? AetheraTokens.auroraTeal
-                        : AetheraTokens.moonGlow,
+                    partnerOnline ? accent : AetheraTokens.moonGlow,
                     AetheraTokens.nebulaPurple,
                   ],
                 ),
@@ -1003,10 +1031,12 @@ class _ConnectionBar extends StatelessWidget {
   final int strength;
   final int level;
   final bool compact;
+  final Color accent;
   const _ConnectionBar({
     required this.strength,
     required this.level,
     required this.compact,
+    required this.accent,
   });
 
   @override
@@ -1021,7 +1051,7 @@ class _ConnectionBar extends StatelessWidget {
             Text(
               context.tr('Nivel $level', 'Level $level'),
               style: AetheraTokens.labelSmall(
-                color: AetheraTokens.auroraTeal,
+                color: accent,
               ).copyWith(fontSize: compact ? 10 : null),
             ),
             AnimatedSwitcher(
@@ -1059,16 +1089,11 @@ class _ConnectionBar extends StatelessWidget {
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [
-                              AetheraTokens.auroraTeal,
-                              AetheraTokens.nebulaPurple,
-                            ],
+                            colors: [accent, AetheraTokens.nebulaPurple],
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AetheraTokens.auroraTeal.withValues(
-                                alpha: 0.38,
-                              ),
+                              color: accent.withValues(alpha: 0.38),
                               blurRadius: 10,
                             ),
                           ],
@@ -1132,6 +1157,7 @@ class _BottomBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final accent = _moodAccentColor(state.combinedMood);
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 16),
       child: AetheraGlassPanel(
@@ -1148,14 +1174,10 @@ class _BottomBar extends ConsumerWidget {
         ],
         child: Stack(
           children: [
-            const Positioned(
+            Positioned(
               right: -34,
               top: -30,
-              child: _AmbientLensGlow(
-                size: 126,
-                color: AetheraTokens.auroraTeal,
-                opacity: 0.18,
-              ),
+              child: _AmbientLensGlow(size: 126, color: accent, opacity: 0.18),
             ),
             const Positioned(
               left: -48,
@@ -1178,7 +1200,7 @@ class _BottomBar extends ConsumerWidget {
                     gradient: LinearGradient(
                       colors: [
                         Colors.transparent,
-                        AetheraTokens.auroraTeal.withValues(alpha: 0.7),
+                        accent.withValues(alpha: 0.7),
                         Colors.transparent,
                       ],
                     ),
@@ -1190,6 +1212,7 @@ class _BottomBar extends ConsumerWidget {
                       child: _ActionButton(
                         icon: Icons.mood_rounded,
                         compact: compact,
+                        accent: accent,
                         label: context.tr('Sentir', 'Feel'),
                         onTap: () => _showEmotionSheet(context, ref),
                       ),
@@ -1199,6 +1222,7 @@ class _BottomBar extends ConsumerWidget {
                       child: _ActionButton(
                         icon: Icons.auto_awesome_outlined,
                         compact: compact,
+                        accent: accent,
                         label: context.tr('Memoria', 'Memory'),
                         onTap: () => _showAddMemorySheet(context, ref),
                       ),
@@ -1206,6 +1230,7 @@ class _BottomBar extends ConsumerWidget {
                     const SizedBox(width: 8),
                     _PulseFAB(
                       compact: compact,
+                      accent: accent,
                       onTap:
                           () => ref.read(universeProvider.notifier).sendPulse(),
                     ),
@@ -1214,6 +1239,7 @@ class _BottomBar extends ConsumerWidget {
                       child: _ActionButton(
                         icon: Icons.self_improvement_rounded,
                         compact: compact,
+                        accent: accent,
                         label: context.tr('Ritual', 'Ritual'),
                         onTap: () => context.push(AetheraRoutes.ritual),
                       ),
@@ -1223,6 +1249,7 @@ class _BottomBar extends ConsumerWidget {
                       child: _ActionButton(
                         icon: Icons.more_horiz_rounded,
                         compact: compact,
+                        accent: accent,
                         label: context.tr('Más', 'More'),
                         onTap: () => _showQuickActionsMenu(context, ref),
                       ),
@@ -1383,12 +1410,14 @@ class _BottomBar extends ConsumerWidget {
 class _ActionButton extends StatefulWidget {
   final IconData icon;
   final bool compact;
+  final Color accent;
   final String label;
   final VoidCallback onTap;
 
   const _ActionButton({
     required this.icon,
     required this.compact,
+    required this.accent,
     required this.label,
     required this.onTap,
   });
@@ -1463,7 +1492,7 @@ class _ActionButtonState extends State<_ActionButton>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AetheraTokens.auroraTeal.withValues(
+                    color: widget.accent.withValues(
                       alpha: _pressed ? 0.18 : 0.08,
                     ),
                     blurRadius: _pressed ? 12 : 8,
@@ -1517,7 +1546,7 @@ class _ActionButtonState extends State<_ActionButton>
                           height: widget.compact ? 22 : 24,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AetheraTokens.auroraTeal.withValues(
+                            color: widget.accent.withValues(
                               alpha: _pressed ? 0.18 : 0.12,
                             ),
                           ),
@@ -3655,8 +3684,13 @@ class _MusicToggleButtonState extends State<_MusicToggleButton> {
 
 class _PulseFAB extends StatefulWidget {
   final bool compact;
+  final Color accent;
   final VoidCallback onTap;
-  const _PulseFAB({required this.compact, required this.onTap});
+  const _PulseFAB({
+    required this.compact,
+    required this.accent,
+    required this.onTap,
+  });
 
   @override
   State<_PulseFAB> createState() => _PulseFABState();
@@ -3726,14 +3760,12 @@ class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AetheraTokens.auroraTeal.withValues(alpha: 0.42),
+                        color: widget.accent.withValues(alpha: 0.42),
                         width: 1.4,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AetheraTokens.auroraTeal.withValues(
-                            alpha: 0.25,
-                          ),
+                          color: widget.accent.withValues(alpha: 0.25),
                           blurRadius: 18,
                         ),
                       ],
@@ -3747,8 +3779,18 @@ class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
                     height: widget.compact ? 46 : 52,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: AetheraTokens.auroraGradient,
-                      boxShadow: AetheraTokens.auroraGlow(),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [widget.accent, AetheraTokens.nebulaPurple],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.accent.withValues(alpha: 0.34),
+                          blurRadius: 18,
+                          spreadRadius: 1,
+                        ),
+                      ],
                     ),
                     child: const Icon(
                       Icons.favorite_rounded,
