@@ -32,14 +32,13 @@ const List<String> _prefijosIgnorados = <String>[
   'build/',
   '.dart_tool/',
   'firebase/rules/node_modules/',
+  'tool/check_mojibake.dart',
 ];
 
 void main() {
-  final ProcessResult lsFiles = Process.runSync(
-    'git',
-    <String>['ls-files'],
-    runInShell: true,
-  );
+  final ProcessResult lsFiles = Process.runSync('git', <String>[
+    'ls-files',
+  ], runInShell: true);
 
   if (lsFiles.exitCode != 0) {
     stderr.writeln(
