@@ -342,15 +342,32 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
     final size = MediaQuery.of(context).size;
     return state.memories.indexed.map((entry) {
       final (index, memory) = entry;
+      final depth = 1.8 + ((index % 5) * 0.9);
       return Positioned(
         left: memory.posX * size.width - 26,
         top: memory.posY * size.height,
-        child: MemoryObjectWidget(
-          memory: memory,
-          animationIndex: index,
-          onTap:
-              () =>
-                  _showMemoryDetail(context, memory.title, memory.description),
+        child: AnimatedBuilder(
+          animation: _cameraDriftController,
+          child: MemoryObjectWidget(
+            memory: memory,
+            animationIndex: index,
+            onTap:
+                () => _showMemoryDetail(
+                  context,
+                  memory.title,
+                  memory.description,
+                ),
+          ),
+          builder: (context, cachedChild) {
+            final phase =
+                (_cameraDriftController.value * 2 * math.pi) + (index * 0.55);
+            final dx = math.sin(phase) * depth;
+            final dy = math.cos(phase * 0.86) * depth * 0.72;
+            return Transform.translate(
+              offset: Offset(dx, dy),
+              child: cachedChild,
+            );
+          },
         ),
       );
     }).toList();
