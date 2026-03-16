@@ -607,11 +607,41 @@ class _TopBar extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      context.tr('Tu Universo', 'Your Universe'),
-                      style: AetheraTokens.displaySmall(),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShaderMask(
+                            shaderCallback:
+                                (bounds) => const LinearGradient(
+                                  colors: [
+                                    AetheraTokens.starlight,
+                                    AetheraTokens.auroraTeal,
+                                  ],
+                                ).createShader(bounds),
+                            child: Text(
+                              context.tr('Tu Universo', 'Your Universe'),
+                              style: AetheraTokens.displaySmall().copyWith(
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            context.tr(
+                              'Ritmo vivo entre ustedes',
+                              'Live rhythm between you',
+                            ),
+                            style: AetheraTokens.bodySmall(
+                              color: AetheraTokens.moonGlow.withValues(
+                                alpha: 0.78,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     _MusicToggleButton(),
                     const SizedBox(width: 8),
                     Semantics(
@@ -641,6 +671,11 @@ class _TopBar extends ConsumerWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                _TopPulseLine(
+                  strength: state.connectionStrength,
+                  partnerOnline: state.partnerOnline,
                 ),
                 if (state.streakDays >= 2 ||
                     !state.isSyncConnected ||
@@ -714,6 +749,45 @@ class _TopBar extends ConsumerWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopPulseLine extends StatelessWidget {
+  final int strength;
+  final bool partnerOnline;
+
+  const _TopPulseLine({required this.strength, required this.partnerOnline});
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (strength / 100).clamp(0.0, 1.0);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        height: 3,
+        color: Colors.white.withValues(alpha: 0.08),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: FractionallySizedBox(
+            widthFactor: progress,
+            child: AnimatedContainer(
+              duration: AetheraMotion.screen,
+              curve: AetheraMotion.standard,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    partnerOnline
+                        ? AetheraTokens.auroraTeal
+                        : AetheraTokens.moonGlow,
+                    AetheraTokens.nebulaPurple,
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1299,8 +1373,15 @@ class _QuickActionTile extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: onTap,
-      child: Padding(
+      child: AnimatedContainer(
+        duration: AetheraMotion.short,
+        margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white.withValues(alpha: 0.03),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
         child: Row(
           children: [
             Container(
@@ -1360,69 +1441,153 @@ class _UniverseEmptyStateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AetheraGlassPanel(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      borderRadius: 24,
+      backgroundColor: const Color(0x240A1224),
+      borderColor: Colors.white.withValues(alpha: 0.22),
+      shadows: [
+        BoxShadow(
+          color: AetheraTokens.nebulaPurple.withValues(alpha: 0.2),
+          blurRadius: 24,
+          spreadRadius: 2,
+        ),
+      ],
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      child: Stack(
         children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  AetheraTokens.auroraTeal.withValues(alpha: 0.32),
-                  AetheraTokens.nebulaPurple.withValues(alpha: 0.22),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: Container(
+              height: 2,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    AetheraTokens.auroraTeal.withValues(alpha: 0.85),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      AetheraTokens.auroraTeal.withValues(alpha: 0.35),
+                      AetheraTokens.nebulaPurple.withValues(alpha: 0.26),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: AetheraTokens.auroraTeal.withValues(alpha: 0.42),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AetheraTokens.auroraTeal.withValues(alpha: 0.22),
+                      blurRadius: 16,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AetheraTokens.starlight,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                context.tr(
+                  'Tu universo esta listo para empezar',
+                  'Your universe is ready to begin',
+                ),
+                style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                context.tr(
+                  'Crea tu primera memoria o registra como te sientes para encender la experiencia.',
+                  'Create your first memory or check in your mood to light up the experience.',
+                ),
+                style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  _HintChip(
+                    icon: Icons.auto_awesome_outlined,
+                    label: context.tr('Primer recuerdo', 'First memory'),
+                  ),
+                  _HintChip(
+                    icon: Icons.favorite_outline_rounded,
+                    label: context.tr('Primer check-in', 'First check-in'),
+                  ),
                 ],
               ),
-              border: Border.all(
-                color: AetheraTokens.auroraTeal.withValues(alpha: 0.35),
-              ),
-            ),
-            child: const Icon(
-              Icons.auto_awesome_rounded,
-              color: AetheraTokens.starlight,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            context.tr(
-              'Tu universo está listo para empezar',
-              'Your universe is ready to begin',
-            ),
-            style: AetheraTokens.bodyLarge(color: AetheraTokens.starlight),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            context.tr(
-              'Crea tu primera memoria o registra como te sientes para encender la experiencia.',
-              'Create your first memory or check in your mood to light up the experience.',
-            ),
-            style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: AetheraButton(
-                  label: context.tr('Crear memoria', 'Create memory'),
-                  onPressed: onCreateMemory,
-                  width: double.infinity,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: AetheraButton(
-                  label: context.tr('Check-in', 'Check-in'),
-                  variant: AetheraButtonVariant.outlined,
-                  onPressed: onCheckIn,
-                  width: double.infinity,
-                ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: AetheraButton(
+                      label: context.tr('Crear memoria', 'Create memory'),
+                      onPressed: onCreateMemory,
+                      width: double.infinity,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: AetheraButton(
+                      label: context.tr('Check-in', 'Check-in'),
+                      variant: AetheraButtonVariant.outlined,
+                      onPressed: onCheckIn,
+                      width: double.infinity,
+                    ),
+                  ),
+                ],
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HintChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _HintChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: Colors.white.withValues(alpha: 0.05),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: AetheraTokens.auroraTeal),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AetheraTokens.labelSmall(color: AetheraTokens.moonGlow),
           ),
         ],
       ),
@@ -1445,22 +1610,56 @@ class _DailyQuestionPanel extends StatelessWidget {
     final revealed = state.isDailyQuestionRevealed;
 
     return AetheraGlassPanel(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      borderRadius: 20,
+      backgroundColor: const Color(0x220B1326),
+      borderColor: AetheraTokens.auroraTeal.withValues(alpha: 0.28),
+      shadows: [
+        BoxShadow(
+          color: AetheraTokens.auroraTeal.withValues(alpha: 0.14),
+          blurRadius: 20,
+          spreadRadius: 1,
+        ),
+      ],
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text('💬', style: TextStyle(fontSize: 16)),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AetheraTokens.auroraTeal.withValues(alpha: 0.16),
+                ),
+                child: const Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 13,
+                  color: AetheraTokens.auroraTeal,
+                ),
+              ),
               const SizedBox(width: 8),
               Text(
-                context.tr('Pregunta del día', 'Question of the day'),
+                context.tr('Pregunta del dia', 'Question of the day'),
                 style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
               ),
               const Spacer(),
-              Text(
-                dailyQuestion.dayKey,
-                style: AetheraTokens.labelSmall(color: AetheraTokens.moonGlow),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  color: Colors.white.withValues(alpha: 0.06),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.14),
+                  ),
+                ),
+                child: Text(
+                  dailyQuestion.dayKey,
+                  style: AetheraTokens.labelSmall(
+                    color: AetheraTokens.moonGlow,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1477,29 +1676,37 @@ class _DailyQuestionPanel extends StatelessWidget {
               onPressed: onAnswer,
             ),
           if (answered && !revealed) ...[
-            Row(
-              children: [
-                const SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.8,
-                    color: AetheraTokens.auroraTeal,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    context.tr(
-                      'Respuesta enviada. Esperando a tu pareja para revelar.',
-                      'Answer sent. Waiting for your partner to reveal.',
-                    ),
-                    style: AetheraTokens.bodySmall(
-                      color: AetheraTokens.moonGlow,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withValues(alpha: 0.04),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.8,
+                      color: AetheraTokens.auroraTeal,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      context.tr(
+                        'Respuesta enviada. Esperando a tu pareja para revelar.',
+                        'Answer sent. Waiting for your partner to reveal.',
+                      ),
+                      style: AetheraTokens.bodySmall(
+                        color: AetheraTokens.moonGlow,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 8),
             AetheraButton(
@@ -1526,7 +1733,7 @@ class _DailyQuestionPanel extends StatelessWidget {
               answer:
                   state.partnerDailyQuestionAnswer?.trim().isNotEmpty == true
                       ? state.partnerDailyQuestionAnswer!
-                      : context.tr('Aún no disponible', 'Not available yet'),
+                      : context.tr('Aun no disponible', 'Not available yet'),
             ),
           ],
         ],
@@ -1548,7 +1755,14 @@ class _AnswerTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.04),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.08),
+            Colors.white.withValues(alpha: 0.03),
+          ],
+        ),
         border: Border.all(
           color: AetheraTokens.moonGlow.withValues(alpha: 0.2),
         ),
@@ -1713,40 +1927,72 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
     final nextUnlock = pending.isNotEmpty ? pending.first.unlockAt : null;
 
     return AetheraGlassPanel(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      borderRadius: 20,
+      backgroundColor: const Color(0x220E1320),
+      borderColor: AetheraTokens.goldenDawn.withValues(alpha: 0.28),
+      shadows: [
+        BoxShadow(
+          color: AetheraTokens.goldenDawn.withValues(alpha: 0.14),
+          blurRadius: 18,
+          spreadRadius: 1,
+        ),
+      ],
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              const Text('⏳', style: TextStyle(fontSize: 16)),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AetheraTokens.goldenDawn.withValues(alpha: 0.16),
+                ),
+                child: const Icon(
+                  Icons.hourglass_bottom_rounded,
+                  size: 13,
+                  color: AetheraTokens.goldenDawn,
+                ),
+              ),
               const SizedBox(width: 8),
               Text(
-                context.tr('Cápsulas del tiempo', 'Time capsules'),
+                context.tr('Capsulas del tiempo', 'Time capsules'),
                 style: AetheraTokens.labelLarge(color: AetheraTokens.starlight),
               ),
               const Spacer(),
-              Text(
-                context.tr(
-                  '${available.length} listas',
-                  '${available.length} ready',
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  color: Colors.white.withValues(alpha: 0.06),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.14),
+                  ),
                 ),
-                style: AetheraTokens.labelSmall(
-                  color: AetheraTokens.auroraTeal,
+                child: Text(
+                  context.tr(
+                    '${available.length} listas',
+                    '${available.length} ready',
+                  ),
+                  style: AetheraTokens.labelSmall(
+                    color: AetheraTokens.goldenDawn,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             nextUnlock == null
                 ? context.tr(
-                  'No hay cápsulas pendientes por abrir.',
+                  'No hay capsulas pendientes por abrir.',
                   'There are no capsules pending to open.',
                 )
                 : context.tr(
-                  'Próxima apertura: ${_formatDateTimeLabel(context, nextUnlock)}',
+                  'Proxima apertura: ${_formatDateTimeLabel(context, nextUnlock)}',
                   'Next opening: ${_formatDateTimeLabel(context, nextUnlock)}',
                 ),
             style: AetheraTokens.bodySmall(color: AetheraTokens.moonGlow),
@@ -1754,7 +2000,7 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
           if (nextCapsule != null) ...[
             const SizedBox(height: 10),
             AetheraButton(
-              label: context.tr('Abrir cápsula', 'Open capsule'),
+              label: context.tr('Abrir capsula', 'Open capsule'),
               variant: AetheraButtonVariant.outlined,
               onPressed: () => onOpenCapsule(nextCapsule),
               width: double.infinity,
