@@ -775,21 +775,56 @@ class _ConnectionBar extends StatelessWidget {
               context.tr('Nivel $level', 'Level $level'),
               style: AetheraTokens.labelSmall(color: AetheraTokens.auroraTeal),
             ),
-            Text(
-              '$strength%',
-              style: AetheraTokens.labelSmall(color: AetheraTokens.moonGlow),
+            AnimatedSwitcher(
+              duration: AetheraMotion.short,
+              switchInCurve: AetheraMotion.enter,
+              switchOutCurve: AetheraMotion.exit,
+              child: Text(
+                '$strength%',
+                key: ValueKey(strength),
+                style: AetheraTokens.labelSmall(color: AetheraTokens.moonGlow),
+              ),
             ),
           ],
         ),
         const SizedBox(height: 5),
         ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: LinearProgressIndicator(
-            value: (strength / 100.0).clamp(0.0, 1.0),
-            minHeight: 3,
-            backgroundColor: Colors.white.withValues(alpha: 0.08),
-            valueColor: const AlwaysStoppedAnimation<Color>(
-              AetheraTokens.auroraTeal,
+          borderRadius: BorderRadius.circular(5),
+          child: Container(
+            height: 4,
+            color: Colors.white.withValues(alpha: 0.08),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(
+                begin: 0,
+                end: (strength / 100.0).clamp(0.0, 1.0),
+              ),
+              duration: AetheraMotion.screen,
+              curve: AetheraMotion.standard,
+              builder:
+                  (_, value, __) => Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: value,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AetheraTokens.auroraTeal,
+                              AetheraTokens.nebulaPurple,
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AetheraTokens.auroraTeal.withValues(
+                                alpha: 0.38,
+                              ),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
             ),
           ),
         ),
@@ -3072,10 +3107,11 @@ class _PulseFAB extends StatefulWidget {
   State<_PulseFAB> createState() => _PulseFABState();
 }
 
-class _PulseFABState extends State<_PulseFAB>
-    with SingleTickerProviderStateMixin {
+class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
   late final AnimationController _ctrl;
+  late final AnimationController _idleCtrl;
   late final Animation<double> _scale;
+  late final Animation<double> _idleScale;
 
   @override
   void initState() {
@@ -3084,16 +3120,25 @@ class _PulseFABState extends State<_PulseFAB>
       vsync: this,
       duration: AetheraMotion.screenSlow,
     );
+    _idleCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1700),
+    )..repeat(reverse: true);
     _scale = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.35), weight: 40),
       TweenSequenceItem(tween: Tween(begin: 1.35, end: 0.9), weight: 30),
       TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.0), weight: 30),
     ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _idleScale = Tween<double>(
+      begin: 0.94,
+      end: 1.08,
+    ).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    _idleCtrl.dispose();
     super.dispose();
   }
 
@@ -3115,22 +3160,49 @@ class _PulseFABState extends State<_PulseFAB>
           width: 60,
           height: 54,
           child: Center(
-            child: ScaleTransition(
-              scale: _scale,
-              child: Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AetheraTokens.auroraGradient,
-                  boxShadow: AetheraTokens.auroraGlow(),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ScaleTransition(
+                  scale: _idleScale,
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AetheraTokens.auroraTeal.withValues(alpha: 0.42),
+                        width: 1.4,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AetheraTokens.auroraTeal.withValues(
+                            alpha: 0.25,
+                          ),
+                          blurRadius: 18,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.favorite_rounded,
-                  color: AetheraTokens.deepSpace,
-                  size: 24,
+                ScaleTransition(
+                  scale: _scale,
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AetheraTokens.auroraGradient,
+                      boxShadow: AetheraTokens.auroraGlow(),
+                    ),
+                    child: const Icon(
+                      Icons.favorite_rounded,
+                      color: AetheraTokens.deepSpace,
+                      size: 24,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
