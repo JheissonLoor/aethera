@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:aethera/core/theme/aethera_tokens.dart';
 import 'package:aethera/shared/models/goal_model.dart';
 
-/// Renders goal structures on the horizon. Further = less progress.
+/// Renderiza estructuras de metas en el horizonte.
 class GoalHorizon extends StatelessWidget {
   final List<GoalModel> goals;
   final void Function(GoalModel)? onGoalTap;
@@ -16,24 +16,23 @@ class GoalHorizon extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Stack(
-          children: goals.asMap().entries.map((entry) {
-            final i = entry.key;
-            final goal = entry.value;
-            // Distribute goals evenly across width
-            final xFraction = (i + 1) / (goals.length + 1);
-            // Scale: completed goals appear larger/closer
-            final scale = 0.4 + goal.progress * 0.6;
-            final yOffset = 20 - goal.progress * 15;
+          children:
+              goals.asMap().entries.map((entry) {
+                final i = entry.key;
+                final goal = entry.value;
+                final xFraction = (i + 1) / (goals.length + 1);
+                final scale = 0.4 + goal.progress * 0.6;
+                final yOffset = 20 - goal.progress * 15;
 
-            return Positioned(
-              left: constraints.maxWidth * xFraction - 20,
-              bottom: yOffset,
-              child: GestureDetector(
-                onTap: onGoalTap != null ? () => onGoalTap!(goal) : null,
-                child: _GoalStructure(goal: goal, scale: scale),
-              ),
-            );
-          }).toList(),
+                return Positioned(
+                  left: constraints.maxWidth * xFraction - 20,
+                  bottom: yOffset,
+                  child: GestureDetector(
+                    onTap: onGoalTap != null ? () => onGoalTap!(goal) : null,
+                    child: _GoalStructure(goal: goal, scale: scale),
+                  ),
+                );
+              }).toList(),
         );
       },
     );
@@ -48,9 +47,12 @@ class _GoalStructure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = goal.isCompleted
-        ? AetheraTokens.goldenDawn
-        : AetheraTokens.starlight.withValues(alpha: 0.3 + goal.progress * 0.5);
+    final color =
+        goal.isCompleted
+            ? AetheraTokens.goldenDawn
+            : AetheraTokens.starlight.withValues(
+              alpha: 0.3 + goal.progress * 0.5,
+            );
 
     final icon = _iconForSymbol(goal.symbol);
 
@@ -60,16 +62,18 @@ class _GoalStructure extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            icon,
-            style: TextStyle(
-              fontSize: 28,
-              shadows: [
-                Shadow(
-                  color: color.withValues(alpha: 0.6),
-                  blurRadius: 12,
-                ),
-              ],
+          Hero(
+            tag: 'goal_${goal.id}',
+            child: Material(
+              type: MaterialType.transparency,
+              child: Icon(
+                icon,
+                size: 28,
+                color: color,
+                shadows: [
+                  Shadow(color: color.withValues(alpha: 0.6), blurRadius: 12),
+                ],
+              ),
             ),
           ),
           if (goal.progress > 0.1)
@@ -87,20 +91,20 @@ class _GoalStructure extends StatelessWidget {
     );
   }
 
-  String _iconForSymbol(String symbol) {
+  IconData _iconForSymbol(String symbol) {
     switch (symbol) {
       case 'lighthouse':
-        return '🏮';
+        return Icons.light_rounded;
       case 'bridge':
-        return '🌉';
+        return Icons.architecture_rounded;
       case 'island':
-        return '🏝️';
+        return Icons.landscape_rounded;
       case 'mountain':
-        return '⛰️';
+        return Icons.terrain_rounded;
       case 'castle':
-        return '🏰';
+        return Icons.castle_rounded;
       default:
-        return '🏛️';
+        return Icons.flag_rounded;
     }
   }
 }
