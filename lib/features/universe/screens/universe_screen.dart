@@ -20,6 +20,7 @@ import 'package:aethera/features/universe/widgets/goal_horizon.dart';
 import 'package:aethera/features/universe/widgets/heartbeat_overlay.dart';
 import 'package:aethera/features/universe/widgets/nebula_layer.dart';
 import 'package:aethera/features/universe/widgets/shooting_star_overlay.dart';
+import 'package:aethera/features/universe/widgets/universe_loading_widgets.dart';
 import 'package:aethera/core/constants/app_constants.dart';
 import 'package:aethera/shared/models/goal_model.dart';
 import 'package:aethera/shared/models/memory_model.dart';
@@ -64,6 +65,87 @@ Color _moodAccentColor(String mood) {
       return const Color(0xFFB892FF);
     default:
       return AetheraTokens.auroraTeal;
+  }
+}
+
+String _moodLabel(BuildContext context, String mood) {
+  final normalized = mood.toLowerCase();
+  switch (normalized) {
+    case 'happy':
+    case 'feliz':
+      return context.tr('Alegria', 'Joy');
+    case 'sad':
+    case 'triste':
+      return context.tr('Tristeza', 'Sadness');
+    case 'love':
+    case 'amor':
+      return context.tr('Amor', 'Love');
+    case 'calm':
+    case 'calma':
+      return context.tr('Calma', 'Calm');
+    case 'excited':
+    case 'emocionado':
+      return context.tr('Emocion', 'Excitement');
+    case 'angry':
+    case 'enojado':
+      return context.tr('Tension', 'Tension');
+    case 'anxious':
+    case 'ansioso':
+      return context.tr('Ansiedad', 'Anxiety');
+    default:
+      return context.tr('En sintonia', 'In sync');
+  }
+}
+
+class _UniverseLayoutSpec {
+  final bool compact;
+  final double horizontalPadding;
+  final double topPanelsTop;
+  final double topPanelsHorizontalPadding;
+  final double horizonBottom;
+  final double horizonHeight;
+  final double emptyCardBottom;
+  final double toastTopWithPanels;
+  final double toastTopWithoutPanels;
+  final double soloBannerBottom;
+  final double bottomGap;
+  final double textScale;
+
+  const _UniverseLayoutSpec({
+    required this.compact,
+    required this.horizontalPadding,
+    required this.topPanelsTop,
+    required this.topPanelsHorizontalPadding,
+    required this.horizonBottom,
+    required this.horizonHeight,
+    required this.emptyCardBottom,
+    required this.toastTopWithPanels,
+    required this.toastTopWithoutPanels,
+    required this.soloBannerBottom,
+    required this.bottomGap,
+    required this.textScale,
+  });
+
+  factory _UniverseLayoutSpec.fromMedia(MediaQueryData media) {
+    final compact = media.size.width < 370 || media.size.height < 740;
+    final isVeryShort = media.size.height < 690;
+    final textScale = media.textScaler.scale(1).clamp(1.0, 1.35);
+    final horizontalPadding = compact ? 14.0 : 20.0;
+    final topPanelsHorizontalPadding = compact ? 14.0 : 20.0;
+    return _UniverseLayoutSpec(
+      compact: compact,
+      horizontalPadding: horizontalPadding,
+      topPanelsTop: compact ? (isVeryShort ? 88 : 96) : 108,
+      topPanelsHorizontalPadding: topPanelsHorizontalPadding,
+      horizonBottom: compact ? 126 : 140,
+      horizonHeight: compact ? 114 : 120,
+      emptyCardBottom: compact ? 194 : 210,
+      toastTopWithPanels: compact ? 248 : 266,
+      toastTopWithoutPanels: compact ? 148 : 160,
+      soloBannerBottom: compact ? 102 : 110,
+      bottomGap: compact ? 10 : 16,
+      textScale: textScale,
+    );
   }
 }
 
@@ -118,9 +200,12 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(universeProvider);
     final media = MediaQuery.of(context);
-    final compact = media.size.width < 370 || media.size.height < 740;
+    final layout = _UniverseLayoutSpec.fromMedia(media);
+    final compact = layout.compact;
     final hasTopPanels =
-        state.dailyQuestion != null || state.capsules.isNotEmpty;
+        state.isLoading ||
+        state.dailyQuestion != null ||
+        state.capsules.isNotEmpty;
     final showEmpty = _showUniverseEmptyState(state);
     final showSoloBanner = state.couple?.isSolo == true;
 
@@ -150,35 +235,45 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          _parallaxLayer(
-            depth: 4,
-            child: EmotionalSky(combinedMood: state.combinedMood),
+          RepaintBoundary(
+            child: _parallaxLayer(
+              depth: 4,
+              child: EmotionalSky(combinedMood: state.combinedMood),
+            ),
           ),
 
-          _parallaxLayer(
-            depth: 6,
-            child: NebulaLayer(universeLevel: state.universeLevel),
+          RepaintBoundary(
+            child: _parallaxLayer(
+              depth: 6,
+              child: NebulaLayer(universeLevel: state.universeLevel),
+            ),
           ),
 
-          _parallaxLayer(depth: 8, child: const CosmicBackground()),
-
-          const ShootingStarOverlay(),
-
-          _parallaxLayer(
-            depth: 10,
-            child: AuroraEffect(opacity: state.showAurora ? 1.0 : 0.0),
+          RepaintBoundary(
+            child: _parallaxLayer(depth: 8, child: const CosmicBackground()),
           ),
 
-          _parallaxLayer(
-            depth: 12,
-            child: _AmbientGlowLayer(universeLevel: state.universeLevel),
+          const RepaintBoundary(child: ShootingStarOverlay()),
+
+          RepaintBoundary(
+            child: _parallaxLayer(
+              depth: 10,
+              child: AuroraEffect(opacity: state.showAurora ? 1.0 : 0.0),
+            ),
+          ),
+
+          RepaintBoundary(
+            child: _parallaxLayer(
+              depth: 12,
+              child: _AmbientGlowLayer(universeLevel: state.universeLevel),
+            ),
           ),
 
           Positioned(
             left: 0,
             right: 0,
-            bottom: compact ? 128 : 140,
-            height: 120,
+            bottom: layout.horizonBottom,
+            height: layout.horizonHeight,
             child: _HorizonLayer(
               state: state,
               onGoalTap: (goal) => _showGoalDetail(context, ref, goal),
@@ -187,9 +282,9 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
 
           ..._buildMemoryObjects(context, state),
           Positioned(
-            left: compact ? 16 : 24,
-            right: compact ? 16 : 24,
-            bottom: compact ? 194 : 210,
+            left: layout.horizontalPadding,
+            right: layout.horizontalPadding,
+            bottom: layout.emptyCardBottom,
             child: AnimatedSwitcher(
               duration: AetheraMotion.screen,
               switchInCurve: AetheraMotion.enter,
@@ -208,16 +303,18 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
             ),
           ),
 
-          HeartbeatOverlay(
-            isActive: state.partnerOnline || state.receivedPulse,
+          RepaintBoundary(
+            child: HeartbeatOverlay(
+              isActive: state.partnerOnline || state.receivedPulse,
+            ),
           ),
 
           AnimatedPositioned(
             duration: AetheraMotion.screen,
             curve: AetheraMotion.standard,
-            top: compact ? 96 : 108,
-            left: compact ? 14 : 20,
-            right: compact ? 14 : 20,
+            top: layout.topPanelsTop,
+            left: layout.topPanelsHorizontalPadding,
+            right: layout.topPanelsHorizontalPadding,
             child: IgnorePointer(
               ignoring: !hasTopPanels,
               child: AnimatedOpacity(
@@ -236,39 +333,43 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
                             ),
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (state.dailyQuestion != null)
-                                _DailyQuestionPanel(
-                                      state: state,
-                                      compact: compact,
-                                      onAnswer:
-                                          () => _showDailyQuestionAnswerSheet(
-                                            state,
-                                          ),
-                                    )
-                                    .animate(
-                                      key: ValueKey(
-                                        'dq_${state.dailyQuestion?.id}_${state.hasAnsweredDailyQuestion}_${state.isDailyQuestionRevealed}',
-                                      ),
-                                    )
-                                    .fadeIn(duration: 360.ms)
-                                    .slideY(begin: -0.08, end: 0),
-                              if (state.dailyQuestion != null &&
-                                  state.capsules.isNotEmpty)
-                                const SizedBox(height: 8),
-                              if (state.capsules.isNotEmpty)
-                                _TimeCapsuleStatusPanel(
-                                      capsules: state.capsules,
-                                      compact: compact,
-                                      currentUserId: state.currentUserId,
-                                      onOpenCapsule: _openCapsule,
-                                    )
-                                    .animate(
-                                      key: ValueKey(
-                                        'tc_${state.capsules.length}_${state.currentUserId}',
-                                      ),
-                                    )
-                                    .fadeIn(delay: 70.ms, duration: 360.ms)
-                                    .slideY(begin: -0.08, end: 0),
+                              if (state.isLoading) ...[
+                                UniverseTopPanelsSkeleton(compact: compact),
+                              ] else ...[
+                                if (state.dailyQuestion != null)
+                                  _DailyQuestionPanel(
+                                        state: state,
+                                        compact: compact,
+                                        onAnswer:
+                                            () => _showDailyQuestionAnswerSheet(
+                                              state,
+                                            ),
+                                      )
+                                      .animate(
+                                        key: ValueKey(
+                                          'dq_${state.dailyQuestion?.id}_${state.hasAnsweredDailyQuestion}_${state.isDailyQuestionRevealed}',
+                                        ),
+                                      )
+                                      .fadeIn(duration: 360.ms)
+                                      .slideY(begin: -0.08, end: 0),
+                                if (state.dailyQuestion != null &&
+                                    state.capsules.isNotEmpty)
+                                  const SizedBox(height: 8),
+                                if (state.capsules.isNotEmpty)
+                                  _TimeCapsuleStatusPanel(
+                                        capsules: state.capsules,
+                                        compact: compact,
+                                        currentUserId: state.currentUserId,
+                                        onOpenCapsule: _openCapsule,
+                                      )
+                                      .animate(
+                                        key: ValueKey(
+                                          'tc_${state.capsules.length}_${state.currentUserId}',
+                                        ),
+                                      )
+                                      .fadeIn(delay: 70.ms, duration: 360.ms)
+                                      .slideY(begin: -0.08, end: 0),
+                              ],
                             ],
                           )
                           : const SizedBox.shrink(),
@@ -279,7 +380,10 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
 
           if (state.newMemoryFromPartner)
             Positioned(
-              top: hasTopPanels ? (compact ? 248 : 266) : (compact ? 148 : 160),
+              top:
+                  hasTopPanels
+                      ? layout.toastTopWithPanels
+                      : layout.toastTopWithoutPanels,
               left: 24,
               right: 24,
               child: _NewMemoryToast()
@@ -320,7 +424,7 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
           Positioned(
             left: 20,
             right: 20,
-            bottom: compact ? 102 : 110,
+            bottom: layout.soloBannerBottom,
             child: AnimatedSwitcher(
               duration: AetheraMotion.screen,
               switchInCurve: AetheraMotion.enter,
@@ -338,25 +442,31 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
             ),
           ),
 
-          const _CinematicVignetteLayer(),
+          const RepaintBoundary(child: _CinematicVignetteLayer()),
 
           SafeArea(
             child: Column(
               children: [
-                _TopBar(
-                  state: state,
-                  compact: compact,
-                ).animate().fadeIn(duration: 780.ms).slideY(begin: -0.16),
+                RepaintBoundary(
+                  child: _TopBar(
+                    state: state,
+                    compact: compact,
+                    layout: layout,
+                  ).animate().fadeIn(duration: 780.ms).slideY(begin: -0.16),
+                ),
                 const Spacer(),
-                _BottomBar(
-                      state: state,
-                      compact: compact,
-                      onOpenCapsule: _openCapsule,
-                    )
-                    .animate()
-                    .fadeIn(duration: 720.ms, delay: 160.ms)
-                    .slideY(begin: 0.16),
-                SizedBox(height: compact ? 10 : 16),
+                RepaintBoundary(
+                  child: _BottomBar(
+                        state: state,
+                        compact: compact,
+                        layout: layout,
+                        onOpenCapsule: _openCapsule,
+                      )
+                      .animate()
+                      .fadeIn(duration: 720.ms, delay: 160.ms)
+                      .slideY(begin: 0.16),
+                ),
+                SizedBox(height: layout.bottomGap),
               ],
             ),
           ),
@@ -378,11 +488,13 @@ class _UniverseScreenState extends ConsumerState<UniverseScreen>
         top: memory.posY * size.height,
         child: AnimatedBuilder(
           animation: _cameraDriftController,
-          child: MemoryObjectWidget(
-            memory: memory,
-            heroTag: 'memory_${memory.id}',
-            animationIndex: index,
-            onTap: () => _showMemoryDetail(context, memory),
+          child: RepaintBoundary(
+            child: MemoryObjectWidget(
+              memory: memory,
+              heroTag: 'memory_${memory.id}',
+              animationIndex: index,
+              onTap: () => _showMemoryDetail(context, memory),
+            ),
           ),
           builder: (context, cachedChild) {
             final phase =
@@ -811,14 +923,20 @@ class _CinematicVignetteLayer extends StatelessWidget {
 class _TopBar extends ConsumerWidget {
   final UniverseAppState state;
   final bool compact;
-  const _TopBar({required this.state, required this.compact});
+  final _UniverseLayoutSpec layout;
+  const _TopBar({
+    required this.state,
+    required this.compact,
+    required this.layout,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accent = _moodAccentColor(state.combinedMood);
+    final displayScale = layout.textScale > 1.18 ? 0.94 : 1.0;
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 12 : 16,
+        horizontal: layout.horizontalPadding - 4,
         vertical: 12,
       ),
       child: AetheraGlassPanel(
@@ -891,8 +1009,10 @@ class _TopBar extends ConsumerWidget {
                               context.tr('Tu Universo', 'Your Universe'),
                               style: AetheraTokens.displaySmall().copyWith(
                                 color: Colors.white,
-                                fontSize: compact ? 22 : null,
+                                fontSize: (compact ? 22 : 24) * displayScale,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -906,6 +1026,40 @@ class _TopBar extends ConsumerWidget {
                                 alpha: 0.78,
                               ),
                             ).copyWith(fontSize: compact ? 11 : null),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              _HeaderStatusChip(
+                                icon: Icons.auto_awesome_rounded,
+                                label: _moodLabel(context, state.combinedMood),
+                                color: accent,
+                              ),
+                              _HeaderStatusChip(
+                                icon:
+                                    state.partnerOnline
+                                        ? Icons.circle_rounded
+                                        : Icons.circle_outlined,
+                                label:
+                                    state.partnerOnline
+                                        ? context.tr(
+                                          'Pareja en linea',
+                                          'Partner online',
+                                        )
+                                        : context.tr(
+                                          'Pareja desconectada',
+                                          'Partner offline',
+                                        ),
+                                color:
+                                    state.partnerOnline
+                                        ? AetheraTokens.auroraTeal
+                                        : AetheraTokens.dusk,
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -1060,7 +1214,7 @@ class _AmbientLensGlow extends StatelessWidget {
   }
 }
 
-class _TopPulseLine extends StatelessWidget {
+class _TopPulseLine extends StatefulWidget {
   final int strength;
   final bool partnerOnline;
   final Color accent;
@@ -1072,31 +1226,157 @@ class _TopPulseLine extends StatelessWidget {
   });
 
   @override
+  State<_TopPulseLine> createState() => _TopPulseLineState();
+}
+
+class _TopPulseLineState extends State<_TopPulseLine>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _glintCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _glintCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _glintCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final progress = (strength / 100).clamp(0.0, 1.0);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        height: 3,
-        color: Colors.white.withValues(alpha: 0.08),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: FractionallySizedBox(
-            widthFactor: progress,
-            child: AnimatedContainer(
-              duration: AetheraMotion.screen,
-              curve: AetheraMotion.standard,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    partnerOnline ? accent : AetheraTokens.moonGlow,
-                    AetheraTokens.nebulaPurple,
-                  ],
+    final progress = (widget.strength / 100).clamp(0.0, 1.0);
+    final endAlignX = (progress * 2) - 1;
+    return Semantics(
+      label: context.tr('Pulso de conexion', 'Connection pulse'),
+      value: '${(progress * 100).round()}%',
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: SizedBox(
+          height: 6,
+          child: Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              Container(color: Colors.white.withValues(alpha: 0.08)),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: progress,
+                  child: AnimatedContainer(
+                    duration: AetheraMotion.screen,
+                    curve: AetheraMotion.standard,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          widget.partnerOnline
+                              ? widget.accent
+                              : AetheraTokens.moonGlow,
+                          AetheraTokens.nebulaPurple,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.accent.withValues(alpha: 0.34),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
+              if (progress > 0.02)
+                Align(
+                  alignment: Alignment(endAlignX, 0),
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color:
+                          widget.partnerOnline
+                              ? widget.accent
+                              : AetheraTokens.moonGlow,
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.accent.withValues(alpha: 0.42),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _glintCtrl,
+                  builder: (context, _) {
+                    final x = -1.2 + (_glintCtrl.value * 2.4);
+                    return Align(
+                      alignment: Alignment(x, 0),
+                      child: Container(
+                        width: 16,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.white.withValues(alpha: 0.24),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HeaderStatusChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _HeaderStatusChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: color.withValues(alpha: 0.1),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AetheraTokens.labelSmall(
+              color: color,
+            ).copyWith(fontSize: 10),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -1259,11 +1539,13 @@ class _HorizonLayer extends StatelessWidget {
 class _BottomBar extends ConsumerWidget {
   final UniverseAppState state;
   final bool compact;
+  final _UniverseLayoutSpec layout;
   final Future<void> Function(TimeCapsuleModel capsule) onOpenCapsule;
 
   const _BottomBar({
     required this.state,
     required this.compact,
+    required this.layout,
     required this.onOpenCapsule,
   });
 
@@ -1271,7 +1553,7 @@ class _BottomBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final accent = _moodAccentColor(state.combinedMood);
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 16),
+      padding: EdgeInsets.symmetric(horizontal: layout.horizontalPadding - 4),
       child: AetheraGlassPanel(
         borderRadius: compact ? 21 : 24,
         padding: EdgeInsets.fromLTRB(10, 8, 10, compact ? 10 : 12),
@@ -1320,52 +1602,59 @@ class _BottomBar extends ConsumerWidget {
                 ),
                 Row(
                   children: [
-                    Expanded(
-                      child: _ActionButton(
-                        icon: Icons.mood_rounded,
+                    if (state.isLoading) ...[
+                      Expanded(
+                        child: UniverseBottomActionsSkeleton(compact: compact),
+                      ),
+                    ] else ...[
+                      Expanded(
+                        child: _ActionButton(
+                          icon: Icons.mood_rounded,
+                          compact: compact,
+                          accent: accent,
+                          label: context.tr('Sentir', 'Feel'),
+                          onTap: () => _showEmotionSheet(context, ref),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _ActionButton(
+                          icon: Icons.auto_awesome_outlined,
+                          compact: compact,
+                          accent: accent,
+                          label: context.tr('Memoria', 'Memory'),
+                          onTap: () => _showAddMemorySheet(context, ref),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _PulseFAB(
                         compact: compact,
                         accent: accent,
-                        label: context.tr('Sentir', 'Feel'),
-                        onTap: () => _showEmotionSheet(context, ref),
+                        onTap:
+                            () =>
+                                ref.read(universeProvider.notifier).sendPulse(),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: _ActionButton(
-                        icon: Icons.auto_awesome_outlined,
-                        compact: compact,
-                        accent: accent,
-                        label: context.tr('Memoria', 'Memory'),
-                        onTap: () => _showAddMemorySheet(context, ref),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _ActionButton(
+                          icon: Icons.self_improvement_rounded,
+                          compact: compact,
+                          accent: accent,
+                          label: context.tr('Ritual', 'Ritual'),
+                          onTap: () => context.push(AetheraRoutes.ritual),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    _PulseFAB(
-                      compact: compact,
-                      accent: accent,
-                      onTap:
-                          () => ref.read(universeProvider.notifier).sendPulse(),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _ActionButton(
-                        icon: Icons.self_improvement_rounded,
-                        compact: compact,
-                        accent: accent,
-                        label: context.tr('Ritual', 'Ritual'),
-                        onTap: () => context.push(AetheraRoutes.ritual),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _ActionButton(
+                          icon: Icons.more_horiz_rounded,
+                          compact: compact,
+                          accent: accent,
+                          label: context.tr('Mas', 'More'),
+                          onTap: () => _showQuickActionsMenu(context, ref),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: _ActionButton(
-                        icon: Icons.more_horiz_rounded,
-                        compact: compact,
-                        accent: accent,
-                        label: context.tr('Mas', 'More'),
-                        onTap: () => _showQuickActionsMenu(context, ref),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ],
@@ -1671,6 +1960,9 @@ class _ActionButtonState extends State<_ActionButton>
                         SizedBox(height: widget.compact ? 3 : 4),
                         Text(
                           widget.label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: AetheraTokens.labelSmall(
                             color: AetheraTokens.moonGlow,
                           ).copyWith(fontSize: widget.compact ? 10 : null),
@@ -2068,13 +2360,17 @@ class _DailyQuestionPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                context.tr('Pregunta del dia', 'Question of the day'),
-                style: AetheraTokens.labelLarge(
-                  color: AetheraTokens.starlight,
-                ).copyWith(fontSize: compact ? 13 : null),
+              Expanded(
+                child: Text(
+                  context.tr('Pregunta del dia', 'Question of the day'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AetheraTokens.labelLarge(
+                    color: AetheraTokens.starlight,
+                  ).copyWith(fontSize: compact ? 13 : null),
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -2086,6 +2382,7 @@ class _DailyQuestionPanel extends StatelessWidget {
                 ),
                 child: Text(
                   dailyQuestion.dayKey,
+                  maxLines: 1,
                   style: AetheraTokens.labelSmall(
                     color: AetheraTokens.moonGlow,
                   ).copyWith(fontSize: compact ? 10 : null),
@@ -2096,6 +2393,8 @@ class _DailyQuestionPanel extends StatelessWidget {
           SizedBox(height: compact ? 7 : 8),
           Text(
             dailyQuestion.question,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
             style: AetheraTokens.bodyMedium(
               color: AetheraTokens.starlight,
             ).copyWith(
@@ -2415,13 +2714,17 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
                 },
               ),
               const SizedBox(width: 8),
-              Text(
-                context.tr('Capsulas del tiempo', 'Time capsules'),
-                style: AetheraTokens.labelLarge(
-                  color: AetheraTokens.starlight,
-                ).copyWith(fontSize: compact ? 13 : null),
+              Expanded(
+                child: Text(
+                  context.tr('Capsulas del tiempo', 'Time capsules'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AetheraTokens.labelLarge(
+                    color: AetheraTokens.starlight,
+                  ).copyWith(fontSize: compact ? 13 : null),
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -2436,6 +2739,7 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
                     '${available.length} listas',
                     '${available.length} ready',
                   ),
+                  maxLines: 1,
                   style: AetheraTokens.labelSmall(
                     color: AetheraTokens.goldenDawn,
                   ).copyWith(fontSize: compact ? 10 : null),
@@ -2454,6 +2758,8 @@ class _TimeCapsuleStatusPanel extends StatelessWidget {
                   'Proxima apertura: ${_formatDateTimeLabel(context, nextUnlock)}',
                   'Next opening: ${_formatDateTimeLabel(context, nextUnlock)}',
                 ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: AetheraTokens.bodySmall(
               color: AetheraTokens.moonGlow,
             ).copyWith(fontSize: compact ? 11 : null),
@@ -2778,6 +3084,17 @@ class _OpenedCapsuleSheet extends StatelessWidget {
                       : capsule.title,
                   style: AetheraTokens.displaySmall(),
                 ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: context.tr('Cerrar', 'Close'),
+                visualDensity: VisualDensity.compact,
+                onPressed: () => Navigator.of(context).maybePop(),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.06),
+                  foregroundColor: AetheraTokens.moonGlow,
+                ),
+                icon: const Icon(Icons.close_rounded, size: 18),
               ),
             ],
           ),
@@ -3567,6 +3884,17 @@ class _GoalDetailSheetState extends State<_GoalDetailSheet> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: context.tr('Cerrar', 'Close'),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.06),
+                    foregroundColor: AetheraTokens.moonGlow,
+                  ),
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                ),
               ],
             ),
 
@@ -3871,8 +4199,11 @@ class _PulseFAB extends StatefulWidget {
 class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final AnimationController _idleCtrl;
+  late final AnimationController _orbitCtrl;
   late final Animation<double> _scale;
   late final Animation<double> _idleScale;
+  late final Animation<double> _waveScale;
+  late final Animation<double> _waveOpacity;
 
   @override
   void initState() {
@@ -3885,21 +4216,34 @@ class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 1700),
     )..repeat(reverse: true);
+    _orbitCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat();
     _scale = TweenSequence([
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.35), weight: 40),
-      TweenSequenceItem(tween: Tween(begin: 1.35, end: 0.9), weight: 30),
-      TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.0), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.24), weight: 36),
+      TweenSequenceItem(tween: Tween(begin: 1.24, end: 0.94), weight: 34),
+      TweenSequenceItem(tween: Tween(begin: 0.94, end: 1.0), weight: 30),
     ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
     _idleScale = Tween<double>(
       begin: 0.94,
       end: 1.08,
     ).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
+    _waveScale = Tween<double>(
+      begin: 0.86,
+      end: 1.9,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _waveOpacity = Tween<double>(
+      begin: 0.44,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutQuart));
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
     _idleCtrl.dispose();
+    _orbitCtrl.dispose();
     super.dispose();
   }
 
@@ -3909,8 +4253,27 @@ class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
     _ctrl.forward(from: 0);
   }
 
+  Widget _orbitDot(double size, double alpha) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AetheraTokens.goldenDawn.withValues(alpha: alpha),
+        boxShadow: [
+          BoxShadow(
+            color: AetheraTokens.goldenDawn.withValues(alpha: alpha * 0.7),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final coreSize = widget.compact ? 46.0 : 52.0;
+    final orbitSize = coreSize + 14;
     return Semantics(
       button: true,
       label: context.tr('Enviar pulso', 'Send pulse'),
@@ -3918,17 +4281,84 @@ class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
         behavior: HitTestBehavior.opaque,
         onTap: _handleTap,
         child: SizedBox(
-          width: widget.compact ? 54 : 60,
-          height: widget.compact ? 50 : 54,
+          width: widget.compact ? 62 : 70,
+          height: widget.compact ? 58 : 64,
           child: Center(
             child: Stack(
+              clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
+                AnimatedBuilder(
+                  animation: _orbitCtrl,
+                  builder: (context, _) {
+                    final theta = _orbitCtrl.value * math.pi * 2;
+                    final radius = orbitSize / 2;
+                    final dotA = Offset(
+                      math.cos(theta) * radius,
+                      math.sin(theta) * radius,
+                    );
+                    final dotB = Offset(
+                      math.cos(theta + math.pi) * radius,
+                      math.sin(theta + math.pi) * radius,
+                    );
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Transform.rotate(
+                          angle: theta * 0.42,
+                          child: Container(
+                            width: orbitSize,
+                            height: orbitSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: widget.accent.withValues(alpha: 0.18),
+                                width: 1.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Transform.translate(
+                          offset: dotA,
+                          child: _orbitDot(6, 0.9),
+                        ),
+                        Transform.translate(
+                          offset: dotB,
+                          child: _orbitDot(4.5, 0.62),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                AnimatedBuilder(
+                  animation: _ctrl,
+                  builder: (context, _) {
+                    return IgnorePointer(
+                      child: Opacity(
+                        opacity: _waveOpacity.value,
+                        child: Transform.scale(
+                          scale: _waveScale.value,
+                          child: Container(
+                            width: coreSize,
+                            height: coreSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: widget.accent.withValues(alpha: 0.7),
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 ScaleTransition(
                   scale: _idleScale,
                   child: Container(
-                    width: widget.compact ? 46 : 52,
-                    height: widget.compact ? 46 : 52,
+                    width: coreSize,
+                    height: coreSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
@@ -3947,8 +4377,8 @@ class _PulseFABState extends State<_PulseFAB> with TickerProviderStateMixin {
                 ScaleTransition(
                   scale: _scale,
                   child: Container(
-                    width: widget.compact ? 46 : 52,
-                    height: widget.compact ? 46 : 52,
+                    width: coreSize,
+                    height: coreSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
