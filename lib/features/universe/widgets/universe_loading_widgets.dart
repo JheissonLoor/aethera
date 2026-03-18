@@ -5,8 +5,13 @@ import 'package:aethera/shared/widgets/aethera_glass_panel.dart';
 /// Skeleton de carga para paneles superiores del universo.
 class UniverseTopPanelsSkeleton extends StatelessWidget {
   final bool compact;
+  final bool animate;
 
-  const UniverseTopPanelsSkeleton({super.key, required this.compact});
+  const UniverseTopPanelsSkeleton({
+    super.key,
+    required this.compact,
+    this.animate = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,12 +23,14 @@ class UniverseTopPanelsSkeleton extends StatelessWidget {
             compact: compact,
             iconColor: AetheraTokens.auroraTeal,
             borderColor: AetheraTokens.auroraTeal.withValues(alpha: 0.22),
+            animate: animate,
           ),
           const SizedBox(height: 8),
           _SkeletonPanel(
             compact: compact,
             iconColor: AetheraTokens.goldenDawn,
             borderColor: AetheraTokens.goldenDawn.withValues(alpha: 0.22),
+            animate: animate,
           ),
         ],
       ),
@@ -34,8 +41,13 @@ class UniverseTopPanelsSkeleton extends StatelessWidget {
 /// Skeleton de carga para la zona de acciones inferiores.
 class UniverseBottomActionsSkeleton extends StatelessWidget {
   final bool compact;
+  final bool animate;
 
-  const UniverseBottomActionsSkeleton({super.key, required this.compact});
+  const UniverseBottomActionsSkeleton({
+    super.key,
+    required this.compact,
+    this.animate = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +55,19 @@ class UniverseBottomActionsSkeleton extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: UniverseSkeletonBlock(height: buttonHeight, radius: 15),
+          child: UniverseSkeletonBlock(
+            height: buttonHeight,
+            radius: 15,
+            animate: animate,
+          ),
         ),
         const SizedBox(width: 4),
         Expanded(
-          child: UniverseSkeletonBlock(height: buttonHeight, radius: 15),
+          child: UniverseSkeletonBlock(
+            height: buttonHeight,
+            radius: 15,
+            animate: animate,
+          ),
         ),
         const SizedBox(width: 8),
         UniverseSkeletonBlock(
@@ -55,14 +75,23 @@ class UniverseBottomActionsSkeleton extends StatelessWidget {
           height: compact ? 58 : 64,
           radius: 999,
           color: AetheraTokens.auroraTeal.withValues(alpha: 0.26),
+          animate: animate,
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: UniverseSkeletonBlock(height: buttonHeight, radius: 15),
+          child: UniverseSkeletonBlock(
+            height: buttonHeight,
+            radius: 15,
+            animate: animate,
+          ),
         ),
         const SizedBox(width: 4),
         Expanded(
-          child: UniverseSkeletonBlock(height: buttonHeight, radius: 15),
+          child: UniverseSkeletonBlock(
+            height: buttonHeight,
+            radius: 15,
+            animate: animate,
+          ),
         ),
       ],
     );
@@ -73,11 +102,13 @@ class _SkeletonPanel extends StatelessWidget {
   final bool compact;
   final Color iconColor;
   final Color borderColor;
+  final bool animate;
 
   const _SkeletonPanel({
     required this.compact,
     required this.iconColor,
     required this.borderColor,
+    required this.animate,
   });
 
   @override
@@ -97,18 +128,21 @@ class _SkeletonPanel extends StatelessWidget {
                 height: compact ? 22 : 24,
                 radius: 999,
                 color: iconColor.withValues(alpha: 0.32),
+                animate: animate,
               ),
               const SizedBox(width: 8),
               UniverseSkeletonBlock(
                 width: compact ? 120 : 150,
                 height: 12,
                 radius: 99,
+                animate: animate,
               ),
               const Spacer(),
               UniverseSkeletonBlock(
                 width: compact ? 54 : 64,
                 height: 16,
                 radius: 99,
+                animate: animate,
               ),
             ],
           ),
@@ -117,12 +151,14 @@ class _SkeletonPanel extends StatelessWidget {
             width: double.infinity,
             height: compact ? 11 : 13,
             radius: 99,
+            animate: animate,
           ),
           const SizedBox(height: 8),
           UniverseSkeletonBlock(
             width: compact ? 160 : 210,
             height: compact ? 11 : 13,
             radius: 99,
+            animate: animate,
           ),
           SizedBox(height: compact ? 10 : 12),
           UniverseSkeletonBlock(
@@ -130,6 +166,7 @@ class _SkeletonPanel extends StatelessWidget {
             height: compact ? 34 : 38,
             radius: 12,
             color: iconColor.withValues(alpha: 0.22),
+            animate: animate,
           ),
         ],
       ),
@@ -143,6 +180,7 @@ class UniverseSkeletonBlock extends StatefulWidget {
   final double height;
   final double radius;
   final Color? color;
+  final bool animate;
 
   const UniverseSkeletonBlock({
     super.key,
@@ -150,6 +188,7 @@ class UniverseSkeletonBlock extends StatefulWidget {
     required this.height,
     required this.radius,
     this.color,
+    this.animate = true,
   });
 
   @override
@@ -180,17 +219,21 @@ class _UniverseSkeletonBlockState extends State<UniverseSkeletonBlock>
   @override
   Widget build(BuildContext context) {
     final base = widget.color ?? Colors.white.withValues(alpha: 0.18);
+    final block = Container(
+      width: widget.width,
+      height: widget.height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(widget.radius),
+        color: base,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+    );
+    if (!widget.animate) {
+      return Opacity(opacity: 0.62, child: block);
+    }
     return FadeTransition(
       opacity: Tween<double>(begin: 0.38, end: 0.72).animate(_opacity),
-      child: Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(widget.radius),
-          color: base,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-        ),
-      ),
+      child: block,
     );
   }
 }

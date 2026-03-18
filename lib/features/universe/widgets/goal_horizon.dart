@@ -6,8 +6,14 @@ import 'package:aethera/shared/models/goal_model.dart';
 class GoalHorizon extends StatelessWidget {
   final List<GoalModel> goals;
   final void Function(GoalModel)? onGoalTap;
+  final bool animate;
 
-  const GoalHorizon({super.key, required this.goals, this.onGoalTap});
+  const GoalHorizon({
+    super.key,
+    required this.goals,
+    this.onGoalTap,
+    this.animate = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +36,11 @@ class GoalHorizon extends StatelessWidget {
                     bottom: yOffset,
                     child: GestureDetector(
                       onTap: onGoalTap != null ? () => onGoalTap!(goal) : null,
-                      child: _GoalStructure(goal: goal, scale: scale),
+                      child: _GoalStructure(
+                        goal: goal,
+                        scale: scale,
+                        animate: animate,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -44,8 +54,13 @@ class GoalHorizon extends StatelessWidget {
 class _GoalStructure extends StatelessWidget {
   final GoalModel goal;
   final double scale;
+  final bool animate;
 
-  const _GoalStructure({required this.goal, required this.scale});
+  const _GoalStructure({
+    required this.goal,
+    required this.scale,
+    required this.animate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -64,108 +79,110 @@ class _GoalStructure extends StatelessWidget {
 
     final icon = _iconForSymbol(goal.symbol);
 
-    return RepaintBoundary(
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: scale * 0.84, end: scale),
-        duration: Duration(
-          milliseconds: 420 + (goal.id.hashCode.abs() % 5) * 70,
-        ),
-        curve: Curves.easeOutBack,
-        builder:
-            (context, animatedScale, _) => Transform.scale(
-              scale: animatedScale,
-              alignment: Alignment.bottomCenter,
-              child: Semantics(
-                label:
-                    '${goal.title}: ${(goal.progress * 100).round()}% ${goal.isCompleted ? "completada" : "en progreso"}',
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+    Widget content(double animatedScale) {
+      return Transform.scale(
+        scale: animatedScale,
+        alignment: Alignment.bottomCenter,
+        child: Semantics(
+          label:
+              '${goal.title}: ${(goal.progress * 100).round()}% ${goal.isCompleted ? "completada" : "en progreso"}',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 42,
+                height: 42,
+                child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    SizedBox(
-                      width: 42,
-                      height: 42,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                colors: [haloColor, Colors.transparent],
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: color.withValues(alpha: 0.34),
-                                width: 0.8 + (goal.progress * 1.2),
-                              ),
-                            ),
-                          ),
-                          Hero(
-                            tag: 'goal_${goal.id}',
-                            child: Material(
-                              type: MaterialType.transparency,
-                              child: Icon(
-                                icon,
-                                size: 28,
-                                color: color,
-                                shadows: [
-                                  Shadow(
-                                    color: color.withValues(alpha: 0.6),
-                                    blurRadius: 12,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (goal.isCompleted)
-                            Positioned(
-                              top: 2,
-                              right: 4,
-                              child: Container(
-                                width: 12,
-                                height: 12,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AetheraTokens.goldenDawn,
-                                ),
-                                child: const Icon(
-                                  Icons.check_rounded,
-                                  size: 8,
-                                  color: AetheraTokens.deepSpace,
-                                ),
-                              ),
-                            ),
-                        ],
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [haloColor, Colors.transparent],
+                        ),
                       ),
                     ),
-                    if (goal.progress > 0.05)
-                      Container(
-                        width: 24 + goal.progress * 18,
-                        height: 2.4,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(99),
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.transparent,
-                              color,
-                              Colors.transparent,
-                            ],
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: color.withValues(alpha: 0.34),
+                          width: 0.8 + (goal.progress * 1.2),
+                        ),
+                      ),
+                    ),
+                    Hero(
+                      tag: 'goal_${goal.id}',
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: Icon(
+                          icon,
+                          size: 28,
+                          color: color,
+                          shadows: [
+                            Shadow(
+                              color: color.withValues(alpha: 0.6),
+                              blurRadius: 12,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (goal.isCompleted)
+                      Positioned(
+                        top: 2,
+                        right: 4,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AetheraTokens.goldenDawn,
+                          ),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            size: 8,
+                            color: AetheraTokens.deepSpace,
                           ),
                         ),
                       ),
                   ],
                 ),
               ),
-            ),
-      ),
+              if (goal.progress > 0.05)
+                Container(
+                  width: 24 + goal.progress * 18,
+                  height: 2.4,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(99),
+                    gradient: LinearGradient(
+                      colors: [Colors.transparent, color, Colors.transparent],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RepaintBoundary(
+      child:
+          animate
+              ? TweenAnimationBuilder<double>(
+                tween: Tween(begin: scale * 0.84, end: scale),
+                duration: Duration(
+                  milliseconds: 420 + (goal.id.hashCode.abs() % 5) * 70,
+                ),
+                curve: Curves.easeOutBack,
+                builder: (context, animatedScale, _) => content(animatedScale),
+              )
+              : content(scale),
     );
   }
 

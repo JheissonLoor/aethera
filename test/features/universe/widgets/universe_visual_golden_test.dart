@@ -60,11 +60,17 @@ void main() {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(height: 110, child: GoalHorizon(goals: goals)),
+                SizedBox(
+                  height: 110,
+                  child: GoalHorizon(goals: goals, animate: false),
+                ),
                 const SizedBox(height: 16),
-                const UniverseTopPanelsSkeleton(compact: false),
+                const UniverseTopPanelsSkeleton(compact: false, animate: false),
                 const SizedBox(height: 16),
-                const UniverseBottomActionsSkeleton(compact: false),
+                const UniverseBottomActionsSkeleton(
+                  compact: false,
+                  animate: false,
+                ),
               ],
             ),
           ),
@@ -72,7 +78,7 @@ void main() {
       ),
     );
 
-    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pump();
 
     await expectLater(
       find.byType(Scaffold),
