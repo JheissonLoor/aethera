@@ -11,61 +11,92 @@ on:
       - master
 
 jobs:
-  calidad_release:
-    name: Calidad y Release
+  quality:
+    name: Quality
     runs-on: ubuntu-latest
     env:
-      MIN_COVERAGE: "15"
+      MIN_COVERAGE: "20"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: 3.27.3
           cache: true
 
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: flutter pub get
 
-      - name: Generar localizaciones
+      - name: Generate localizations
         run: flutter gen-l10n
 
-      - name: Check encoding y mojibake
+      - name: Encoding and mojibake checks
         run: dart run tool/check_mojibake.dart
 
-      - name: Analisis estatico
+      - name: Static analysis
         run: flutter analyze
 
-      - name: Tests unit y widget con cobertura
-        run: flutter test --coverage test/core test/features test/shared test/widget_test.dart
+      - name: Unit, widget and e2e tests with coverage
+        run: flutter test --coverage test/core test/features test/shared test/e2e test/widget_test.dart
 
-      - name: Cobertura minima
+      - name: Coverage gate
         run: >
           dart run tool/check_lcov_min.dart
           --min=$MIN_COVERAGE
-          --include=lib/core/services,lib/core/utils,lib/shared/models,lib/shared/widgets,lib/features/universe/domain
+          --include=lib/core/services,lib/core/utils,lib/core/router,lib/core/providers,lib/shared/models,lib/shared/widgets,lib/features/universe/domain
 
-      - name: Tests E2E criticos
-        run: flutter test test/e2e
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: firebase/rules/package-lock.json
 
-      - name: Preparar google-services.json para CI
+      - name: Install Firebase rules test dependencies
+        working-directory: firebase/rules
+        run: npm ci
+
+      - name: Firebase rules tests
+        working-directory: firebase/rules
+        run: npm test
+
+  release:
+    name: Release Android Bundle
+    runs-on: ubuntu-latest
+    needs: quality
+    if: github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.27.3
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Configure google-services.json
         env:
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
-          mkdir -p android/app
-          if [ -n "$GOOGLE_SERVICES_JSON_B64" ]; then
-            echo "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/google-services.json
-          else
-            echo '{"project_info":{"project_number":"1234567890","project_id":"aethera-ci","storage_bucket":"aethera-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:1234567890:android:abcdef123456","android_client_info":{"package_name":"com.aethera.aethera"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyCI_PLACEHOLDER_KEY"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > android/app/google-services.json
+          if [ -z "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "GOOGLE_SERVICES_JSON_B64 is required for release builds."
+            exit 1
           fi
+          mkdir -p android/app
+          echo "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/google-services.json
 
       - name: Build Android App Bundle (release)
         run: flutter build appbundle --release
 
-      - name: Subir artefacto AAB
+      - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab

@@ -1,10 +1,13 @@
 import 'dart:async';
-import 'package:flutter/widgets.dart';
+
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/widgets.dart';
 
 /// Manages real-time presence in Firebase Realtime Database.
 ///
 /// Structure:
+///   presence/{coupleId}/user1Id     : string
+///   presence/{coupleId}/user2Id     : string
 ///   presence/{coupleId}/user1Online : bool
 ///   presence/{coupleId}/user2Online : bool
 ///   presence/{coupleId}/pulse       : {from: userId, at: serverTimestamp}
@@ -16,8 +19,6 @@ class PresenceService with WidgetsBindingObserver {
   bool _isUser1 = false;
   DatabaseReference? _myRef;
 
-  // ─── Connect / Disconnect ──────────────────────────────────────────────────
-
   Future<void> connect({
     required String coupleId,
     required String userId,
@@ -26,7 +27,12 @@ class PresenceService with WidgetsBindingObserver {
     _coupleId = coupleId;
     _userId = userId;
     _isUser1 = isUser1;
-    _myRef = _db.ref('presence/$coupleId/${isUser1 ? 'user1Online' : 'user2Online'}');
+
+    final memberSlot = isUser1 ? 'user1Id' : 'user2Id';
+    await _db.ref('presence/$coupleId/$memberSlot').set(userId);
+
+    final onlineSlot = isUser1 ? 'user1Online' : 'user2Online';
+    _myRef = _db.ref('presence/$coupleId/$onlineSlot');
     WidgetsBinding.instance.addObserver(this);
     await _setOnline(true);
   }
@@ -42,23 +48,20 @@ class PresenceService with WidgetsBindingObserver {
   Future<void> _setOnline(bool online) async {
     if (_myRef == null) return;
     await _myRef!.set(online);
-    // Firebase will also set false automatically when TCP connection drops
-    if (online) await _myRef!.onDisconnect().set(false);
+    if (online) {
+      await _myRef!.onDisconnect().set(false);
+    }
   }
-
-  // ─── App Lifecycle ─────────────────────────────────────────────────────────
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _setOnline(true);
+      unawaited(_setOnline(true));
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      _setOnline(false);
+      unawaited(_setOnline(false));
     }
   }
-
-  // ─── Partner Online Stream ────────────────────────────────────────────────
 
   /// Emits true/false as the partner connects or disconnects.
   Stream<bool> partnerOnlineStream() {
@@ -71,8 +74,6 @@ class PresenceService with WidgetsBindingObserver {
         .map((event) => event.snapshot.value as bool? ?? false);
   }
 
-  // ─── Pulse ────────────────────────────────────────────────────────────────
-
   /// Writes a heartbeat pulse to RTDB for the partner to react to.
   Future<void> sendPulse() async {
     final coupleId = _coupleId;
@@ -84,7 +85,7 @@ class PresenceService with WidgetsBindingObserver {
     });
   }
 
-  /// Emits true (for ~8 s) whenever the partner sends a pulse.
+  /// Emits true (for ~8s) whenever the partner sends a pulse.
   Stream<bool> incomingPulseStream() {
     final coupleId = _coupleId;
     final userId = _userId;
@@ -95,7 +96,6 @@ class PresenceService with WidgetsBindingObserver {
       final from = data['from'] as String?;
       final at = data['at'] as int?;
       if (from == null || at == null || from == userId) return false;
-      // Only react to pulses that arrived in the last 8 seconds
       return DateTime.now().millisecondsSinceEpoch - at < 8000;
     });
   }

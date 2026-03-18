@@ -111,7 +111,8 @@ flutterfire configure
 
 Notas de seguridad del repositorio:
 
-- `lib/firebase_options.dart` esta sanitizado intencionalmente.
+- `lib/firebase_options.dart` contiene configuracion de cliente Firebase generada.
+- No guardes secretos de backend en el cliente; usa variables/secret manager en servidor.
 - `android/app/google-services.json` no se versiona.
 - Usa `android/app/google-services.json.example` solo como plantilla.
 

@@ -1,8 +1,27 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function esOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function tipoPermitido() {
+      return (
+        request.resource.contentType.matches('image/.*')
+        || request.resource.contentType.matches('video/.*')
+        || request.resource.contentType.matches('audio/.*')
+        || request.resource.contentType.matches('application/pdf')
+      );
+    }
+
     match /users/{uid}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if esOwner(uid);
+
+      allow create, update: if esOwner(uid)
+        && request.resource.size <= 10 * 1024 * 1024
+        && tipoPermitido();
+
+      allow delete: if esOwner(uid);
     }
 
     match /{allPaths=**} {

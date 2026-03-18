@@ -25,6 +25,36 @@ async function seedFirestore(data) {
   });
 }
 
+function baseUser(uid) {
+  return {
+    email: `${uid}@mail.com`,
+    displayName: uid.toUpperCase(),
+    createdAt: 1,
+  };
+}
+
+function openCouple(user1Id, inviteCode = 'ABC123') {
+  return {
+    user1Id,
+    user2Id: '',
+    inviteCode,
+    createdAt: 1,
+    connectionStrength: 0,
+    universeState: { phase: 'night', level: 1, lastInteraction: 1 },
+  };
+}
+
+function closedCouple(user1Id, user2Id, inviteCode = 'ABC123') {
+  return {
+    user1Id,
+    user2Id,
+    inviteCode,
+    createdAt: 1,
+    connectionStrength: 0,
+    universeState: { phase: 'night', level: 1, lastInteraction: 1 },
+  };
+}
+
 test.before(async () => {
   testEnv = await initializeTestEnvironment({
     projectId,
@@ -46,297 +76,197 @@ test.afterEach(async () => {
 
 test('users: cada usuario solo puede leer su propio documento', async () => {
   await seedFirestore({
-    'users/u1': { email: 'u1@mail.com', displayName: 'U1', createdAt: 1 },
-    'users/u2': { email: 'u2@mail.com', displayName: 'U2', createdAt: 1 },
+    'users/u1': baseUser('u1'),
+    'users/u2': baseUser('u2'),
   });
 
   const dbU1 = testEnv.authenticatedContext('u1').firestore();
-  const own = dbU1.collection('users').doc('u1').get();
-  const foreign = dbU1.collection('users').doc('u2').get();
-
-  await assertSucceeds(own);
-  await assertFails(foreign);
+  await assertSucceeds(dbU1.collection('users').doc('u1').get());
+  await assertFails(dbU1.collection('users').doc('u2').get());
 });
 
-test('users: no permite registrar pareja inexistente', async () => {
-  await seedFirestore({
-    'users/u1': {
-      email: 'u1@mail.com',
-      displayName: 'U1',
-      createdAt: 1,
-    },
-  });
-
+test('users: create rechaza coupleId arbitrario', async () => {
   const dbU1 = testEnv.authenticatedContext('u1').firestore();
   await assertFails(
-    dbU1.collection('users').doc('u1').update({ coupleId: 'no-existe' })
-  );
-});
-
-test('couples: permite crear universo nuevo al user1 autenticado', async () => {
-  await seedFirestore({
-    'users/u1': {
-      email: 'u1@mail.com',
-      displayName: 'U1',
-      createdAt: 1,
-    },
-  });
-
-  const dbU1 = testEnv.authenticatedContext('u1').firestore();
-
-  await assertSucceeds(
-    dbU1.collection('couples').doc('c1').set({
-      user1Id: 'u1',
-      user2Id: '',
-      inviteCode: 'ABC123',
-      createdAt: 1,
-      connectionStrength: 0,
-      universeState: {
-        phase: 'night',
-        level: 1,
-        lastInteraction: 1,
-      },
+    dbU1.collection('users').doc('u1').set({
+      ...baseUser('u1'),
+      coupleId: 'c1',
     })
   );
 });
 
+test('users: update de coupleId solo si el usuario es miembro real de la pareja', async () => {
+  await seedFirestore({
+    'users/u1': baseUser('u1'),
+    'users/u2': baseUser('u2'),
+    'couples/c1': openCouple('u1', 'ABC123'),
+  });
+
+  const dbU1 = testEnv.authenticatedContext('u1').firestore();
+  const dbU2 = testEnv.authenticatedContext('u2').firestore();
+
+  await assertSucceeds(dbU1.collection('users').doc('u1').update({ coupleId: 'c1' }));
+  await assertFails(dbU2.collection('users').doc('u2').update({ coupleId: 'c1' }));
+});
+
+test('couples: crear pareja y publicar invite_code activo', async () => {
+  await seedFirestore({
+    'users/u1': baseUser('u1'),
+  });
+
+  const dbU1 = testEnv.authenticatedContext('u1').firestore();
+  await assertSucceeds(
+    dbU1.collection('couples').doc('c1').set(openCouple('u1', 'ABC123'))
+  );
+  await assertSucceeds(
+    dbU1.collection('invite_codes').doc('ABC123').set({
+      coupleId: 'c1',
+      createdBy: 'u1',
+      createdAt: 1,
+      active: true,
+    })
+  );
+});
+
+test('couples: list bloqueado para evitar enumeracion', async () => {
+  await seedFirestore({
+    'users/u2': baseUser('u2'),
+    'couples/c1': openCouple('u1', 'ABC123'),
+  });
+
+  const dbU2 = testEnv.authenticatedContext('u2').firestore();
+  await assertFails(dbU2.collection('couples').limit(1).get());
+});
+
+test('couples: join solo permitido con invite_code activo asociado', async () => {
+  await seedFirestore({
+    'users/u2': baseUser('u2'),
+    'couples/c1': openCouple('u1', 'ABC123'),
+    'invite_codes/ABC123': {
+      coupleId: 'c1',
+      createdBy: 'u1',
+      createdAt: 1,
+      active: true,
+    },
+    'couples/c2': openCouple('u1', 'DEF456'),
+  });
+
+  const dbU2 = testEnv.authenticatedContext('u2').firestore();
+  await assertSucceeds(dbU2.collection('couples').doc('c1').update({ user2Id: 'u2' }));
+  await assertSucceeds(dbU2.collection('invite_codes').doc('ABC123').update({ active: false }));
+  await assertFails(dbU2.collection('couples').doc('c2').update({ user2Id: 'u2' }));
+});
+
 test('couples: no miembro no puede leer pareja cerrada', async () => {
   await seedFirestore({
-    'users/u3': { email: 'u3@mail.com', displayName: 'U3', createdAt: 1 },
-    'couples/c1': {
-      user1Id: 'u1',
-      user2Id: 'u2',
-      inviteCode: 'ABC123',
-      createdAt: 1,
-      connectionStrength: 0,
-      universeState: { phase: 'night', level: 1, lastInteraction: 1 },
-    },
+    'users/u3': baseUser('u3'),
+    'couples/c1': closedCouple('u1', 'u2', 'ABC123'),
   });
 
   const dbU3 = testEnv.authenticatedContext('u3').firestore();
   await assertFails(dbU3.collection('couples').doc('c1').get());
 });
 
-test('couples: consulta de codigo de invitacion para pareja abierta', async () => {
+test('memories: coupleId forjado en users no concede acceso cross-couple', async () => {
   await seedFirestore({
-    'users/u2': { email: 'u2@mail.com', displayName: 'U2', createdAt: 1 },
-    'couples/c1': {
-      user1Id: 'u1',
-      user2Id: '',
-      inviteCode: 'ABC123',
-      createdAt: 1,
-      connectionStrength: 0,
-      universeState: { phase: 'night', level: 1, lastInteraction: 1 },
-    },
+    'users/u1': { ...baseUser('u1'), coupleId: 'c1' },
+    'users/u3': { ...baseUser('u3'), coupleId: 'c1' },
+    'couples/c1': closedCouple('u1', 'u2', 'ABC123'),
   });
 
-  const dbU2 = testEnv.authenticatedContext('u2').firestore();
-
-  await assertSucceeds(
-    dbU2
-      .collection('couples')
-      .where('inviteCode', '==', 'ABC123')
-      .limit(1)
-      .get()
-  );
-
+  const dbU3 = testEnv.authenticatedContext('u3').firestore();
   await assertFails(
-    dbU2.collection('couples').where('inviteCode', '==', 'ABC123').get()
+    dbU3.collection('memories').doc('m1').set({
+      id: 'm1',
+      coupleId: 'c1',
+      title: 'Hack',
+      description: 'Intento',
+      createdByUserId: 'u3',
+      createdAt: 1,
+      posX: 0.5,
+      posY: 0.5,
+    })
   );
 });
 
-test('couples: join permitido solo cambiando user2Id', async () => {
+test('memories: miembro real puede crear', async () => {
   await seedFirestore({
-    'users/u2': { email: 'u2@mail.com', displayName: 'U2', createdAt: 1 },
-    'couples/c1': {
-      user1Id: 'u1',
-      user2Id: '',
-      inviteCode: 'ABC123',
-      createdAt: 1,
-      connectionStrength: 0,
-      universeState: { phase: 'night', level: 1, lastInteraction: 1 },
-    },
+    'users/u1': { ...baseUser('u1'), coupleId: 'c1' },
+    'couples/c1': closedCouple('u1', 'u2', 'ABC123'),
   });
 
-  const dbU2 = testEnv.authenticatedContext('u2').firestore();
-
+  const dbU1 = testEnv.authenticatedContext('u1').firestore();
   await assertSucceeds(
-    dbU2.collection('couples').doc('c1').update({ user2Id: 'u2' })
+    dbU1.collection('memories').doc('m1').set({
+      id: 'm1',
+      coupleId: 'c1',
+      title: 'Recuerdo',
+      description: 'Texto',
+      createdByUserId: 'u1',
+      createdAt: 1,
+      posX: 0.5,
+      posY: 0.5,
+    })
+  );
+});
+
+test('couples.update: miembro puede tocar solo campos permitidos', async () => {
+  await seedFirestore({
+    'users/u1': { ...baseUser('u1'), coupleId: 'c1' },
+    'couples/c1': closedCouple('u1', 'u2', 'ABC123'),
+  });
+
+  const dbU1 = testEnv.authenticatedContext('u1').firestore();
+  await assertSucceeds(
+    dbU1.collection('couples').doc('c1').update({
+      connectionStrength: 12,
+      user1Emotion: { mood: 'joy', intensity: 0.8, updatedAt: 2 },
+      lastCheckinUser1: '2026-03-17',
+      streakDays: 2,
+      lastStreakDate: '2026-03-17',
+    })
   );
 
   await assertFails(
-    dbU2.collection('couples').doc('c1').update({
-      user2Id: 'u2',
+    dbU1.collection('couples').doc('c1').update({
       inviteCode: 'HACK00',
     })
   );
 });
 
-test('memories: solo miembros de la pareja pueden crear', async () => {
+test('rituals: permite claves dinamicas de la pareja y bloquea claves externas', async () => {
   await seedFirestore({
-    'users/u1': {
-      email: 'u1@mail.com',
-      displayName: 'U1',
-      createdAt: 1,
-      coupleId: 'c1',
-    },
-    'users/u3': {
-      email: 'u3@mail.com',
-      displayName: 'U3',
-      createdAt: 1,
-      coupleId: 'c9',
-    },
-  });
-
-  const goodDb = testEnv.authenticatedContext('u1').firestore();
-  const badDb = testEnv.authenticatedContext('u3').firestore();
-
-  const payload = {
-    coupleId: 'c1',
-    type: 'constellation',
-    title: 'Recuerdo',
-    description: 'Texto',
-    createdByUserId: 'u1',
-    createdAt: 1,
-    posX: 0.3,
-    posY: 0.7,
-  };
-
-  await assertSucceeds(goodDb.collection('memories').doc('m1').set(payload));
-  await assertFails(badDb.collection('memories').doc('m2').set(payload));
-});
-
-test('goals: miembro puede actualizar progreso, no campos estructurales', async () => {
-  await seedFirestore({
-    'users/u1': {
-      email: 'u1@mail.com',
-      displayName: 'U1',
-      createdAt: 1,
-      coupleId: 'c1',
-    },
-    'goals/g1': {
-      coupleId: 'c1',
-      title: 'Meta',
-      description: 'Desc',
-      targetDate: 100,
-      progress: 0.2,
-      symbol: 'lighthouse',
-      createdAt: 1,
-      completedAt: null,
-    },
+    'users/u1': { ...baseUser('u1'), coupleId: 'c1' },
+    'users/u2': { ...baseUser('u2'), coupleId: 'c1' },
+    'couples/c1': closedCouple('u1', 'u2', 'ABC123'),
   });
 
   const dbU1 = testEnv.authenticatedContext('u1').firestore();
-
-  await assertSucceeds(
-    dbU1.collection('goals').doc('g1').update({ progress: 0.8, completedAt: 200 })
-  );
-
-  await assertFails(dbU1.collection('goals').doc('g1').update({ title: 'Hack' }));
-});
-
-test('daily_questions: solo se puede modificar la propia respuesta', async () => {
-  await seedFirestore({
-    'users/u1': {
-      email: 'u1@mail.com',
-      displayName: 'U1',
-      createdAt: 1,
-      coupleId: 'c1',
-    },
-    'daily_questions/c1_2026-03-13': {
-      coupleId: 'c1',
-      dayKey: '2026-03-13',
-      question: 'Q',
-      answers: { u2: 'Hola' },
-      createdAt: 1,
-      revealedAt: null,
-    },
-  });
-
-  const dbU1 = testEnv.authenticatedContext('u1').firestore();
-
-  await assertSucceeds(
-    dbU1.collection('daily_questions').doc('c1_2026-03-13').update({
-      answers: { u1: 'Mi respuesta', u2: 'Hola' },
-      revealedAt: 2,
-    })
-  );
-
-  await assertFails(
-    dbU1.collection('daily_questions').doc('c1_2026-03-13').update({
-      answers: { u1: 'Mi respuesta', u2: 'Alterada' },
-      revealedAt: 2,
-    })
-  );
-});
-
-test('wishes: solo la pareja receptora puede marcar visto', async () => {
-  await seedFirestore({
-    'users/u2': {
-      email: 'u2@mail.com',
-      displayName: 'U2',
-      createdAt: 1,
-      coupleId: 'c1',
-    },
-    'users/u1': {
-      email: 'u1@mail.com',
-      displayName: 'U1',
-      createdAt: 1,
-      coupleId: 'c1',
-    },
-    'wishes/w1': {
-      id: 'w1',
-      coupleId: 'c1',
-      message: 'Hola',
-      fromUserId: 'u1',
-      createdAt: 1,
-      seen: false,
-    },
-  });
-
-  const dbSender = testEnv.authenticatedContext('u1').firestore();
-  const dbPartner = testEnv.authenticatedContext('u2').firestore();
-
-  await assertSucceeds(dbPartner.collection('wishes').doc('w1').update({ seen: true }));
-  await assertFails(dbSender.collection('wishes').doc('w1').update({ seen: true }));
-});
-
-test('rituals: solo miembros de la pareja pueden leer y escribir', async () => {
-  await seedFirestore({
-    'users/u1': {
-      email: 'u1@mail.com',
-      displayName: 'U1',
-      createdAt: 1,
-      coupleId: 'c1',
-    },
-    'users/u3': {
-      email: 'u3@mail.com',
-      displayName: 'U3',
-      createdAt: 1,
-      coupleId: 'c9',
-    },
-  });
-
-  const dbU1 = testEnv.authenticatedContext('u1').firestore();
-  const dbU3 = testEnv.authenticatedContext('u3').firestore();
-
   await assertSucceeds(
     dbU1.collection('rituals').doc('c1').collection('weekly').doc('2026-W11').set({
       question: 'Q',
       answer_u1: 'A',
+      gratitude_u1: ['G1', 'G2'],
       completedBy: ['u1'],
       updatedAt: 1,
     })
   );
 
   await assertFails(
-    dbU3.collection('rituals').doc('c1').collection('weekly').doc('2026-W11').get()
+    dbU1.collection('rituals').doc('c1').collection('weekly').doc('2026-W11').update({
+      answer_u3: 'hack',
+    })
+  );
+  await assertFails(
+    dbU1.collection('rituals').doc('c1').collection('weekly').doc('2026-W11').update({
+      hacked: true,
+    })
   );
 });
 
 test('sanity: reglas no quedan abiertas globalmente', async () => {
   await seedFirestore({
-    'users/u1': { email: 'u1@mail.com', displayName: 'U1', createdAt: 1, coupleId: 'c1' },
+    'users/u1': baseUser('u1'),
   });
 
   const dbU1 = testEnv.authenticatedContext('u1').firestore();

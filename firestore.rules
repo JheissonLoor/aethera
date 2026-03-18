@@ -9,36 +9,264 @@ service cloud.firestore {
       return autenticado() && request.auth.uid == uid;
     }
 
-    function docUsuario() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    function docPareja(coupleId) {
+      return get(/databases/$(database)/documents/couples/$(coupleId));
     }
 
-    function tieneDocUsuario() {
-      return autenticado() && docUsuario().data != null;
+    function docParejaPost(coupleId) {
+      return getAfter(/databases/$(database)/documents/couples/$(coupleId));
     }
 
-    function miCoupleId() {
-      return (
-        tieneDocUsuario()
-        && ('coupleId' in docUsuario().data)
-        && docUsuario().data.coupleId is string
-      )
-        ? docUsuario().data.coupleId
-        : '';
-    }
-
-    function esMiPareja(coupleId) {
-      return autenticado() && coupleId is string && coupleId.size() > 0 && miCoupleId() == coupleId;
-    }
-
-    function parejaExisteYMePertenece(coupleId) {
+    function parejaExiste(coupleId) {
       return (
         coupleId is string
         && coupleId.size() > 0
         && exists(/databases/$(database)/documents/couples/$(coupleId))
+      );
+    }
+
+    function parejaExistePost(coupleId) {
+      return (
+        coupleId is string
+        && coupleId.size() > 0
+        && existsAfter(/databases/$(database)/documents/couples/$(coupleId))
+      );
+    }
+
+    function esMiPareja(coupleId) {
+      return (
+        autenticado()
+        && parejaExiste(coupleId)
         && (
-          get(/databases/$(database)/documents/couples/$(coupleId)).data.user1Id == request.auth.uid
-          || get(/databases/$(database)/documents/couples/$(coupleId)).data.user2Id == request.auth.uid
+          docPareja(coupleId).data.user1Id == request.auth.uid
+          || docPareja(coupleId).data.user2Id == request.auth.uid
+        )
+      );
+    }
+
+    function esMiParejaPost(coupleId) {
+      return (
+        autenticado()
+        && parejaExistePost(coupleId)
+        && (
+          docParejaPost(coupleId).data.user1Id == request.auth.uid
+          || docParejaPost(coupleId).data.user2Id == request.auth.uid
+        )
+      );
+    }
+
+    function user1Pareja(coupleId) {
+      return docPareja(coupleId).data.user1Id;
+    }
+
+    function user2Pareja(coupleId) {
+      return docPareja(coupleId).data.user2Id;
+    }
+
+    function esUidPareja(coupleId, uid) {
+      return (
+        uid is string
+        && uid.size() > 0
+        && (
+          uid == user1Pareja(coupleId)
+          || uid == user2Pareja(coupleId)
+        )
+      );
+    }
+
+    function docInvite(inviteCode) {
+      return get(/databases/$(database)/documents/invite_codes/$(inviteCode));
+    }
+
+    function inviteActivoParaPareja(inviteCode, coupleId) {
+      return (
+        inviteCode is string
+        && inviteCode.size() == 6
+        && exists(/databases/$(database)/documents/invite_codes/$(inviteCode))
+        && docInvite(inviteCode).data.coupleId == coupleId
+        && docInvite(inviteCode).data.active == true
+      );
+    }
+
+    function emocionValida(emocion) {
+      return (
+        emocion is map
+        && emocion.keys().hasOnly(['mood', 'intensity', 'updatedAt'])
+        && emocion.mood is string
+        && emocion.intensity is number
+        && emocion.updatedAt is int
+      );
+    }
+
+    function cambiosParejaPermitidos() {
+      return (
+        request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'connectionStrength',
+          'user1Emotion',
+          'user2Emotion',
+          'lastCheckinUser1',
+          'lastCheckinUser2',
+          'lastStreakDate',
+          'streakDays'
+        ])
+        && request.resource.data.user1Id == resource.data.user1Id
+        && request.resource.data.user2Id == resource.data.user2Id
+        && request.resource.data.inviteCode == resource.data.inviteCode
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.universeState == resource.data.universeState
+        && request.resource.data.connectionStrength is int
+        && (
+          !('user1Emotion' in request.resource.data)
+          || emocionValida(request.resource.data.user1Emotion)
+        )
+        && (
+          !('user2Emotion' in request.resource.data)
+          || emocionValida(request.resource.data.user2Emotion)
+        )
+        && (
+          !('lastCheckinUser1' in request.resource.data)
+          || request.resource.data.lastCheckinUser1 is string
+        )
+        && (
+          !('lastCheckinUser2' in request.resource.data)
+          || request.resource.data.lastCheckinUser2 is string
+        )
+        && (
+          !('lastStreakDate' in request.resource.data)
+          || request.resource.data.lastStreakDate is string
+        )
+        && (
+          !('streakDays' in request.resource.data)
+          || request.resource.data.streakDays is int
+        )
+      );
+    }
+
+    function cambioJoinParejaPermitido(coupleId) {
+      return (
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['user2Id'])
+        && resource.data.user2Id == ''
+        && request.resource.data.user2Id == request.auth.uid
+        && request.auth.uid != resource.data.user1Id
+        && inviteActivoParaPareja(resource.data.inviteCode, coupleId)
+      );
+    }
+
+    function claveRespuesta(uid) {
+      return 'answer_' + uid;
+    }
+
+    function claveGratitud(uid) {
+      return 'gratitude_' + uid;
+    }
+
+    function claveSyncHolding(uid) {
+      return 'syncHolding_' + uid;
+    }
+
+    function claveSyncHoldSince(uid) {
+      return 'syncHoldSince_' + uid;
+    }
+
+    function clavesRitualPermitidas(coupleId) {
+      return [
+        'question',
+        'completedBy',
+        'updatedAt',
+        'syncInviteFrom',
+        'syncInviteAt',
+        'syncUpdatedAt',
+        'syncCompleted',
+        'syncCompletedAt',
+        'syncEvent',
+        claveRespuesta(user1Pareja(coupleId)),
+        claveRespuesta(user2Pareja(coupleId)),
+        claveGratitud(user1Pareja(coupleId)),
+        claveGratitud(user2Pareja(coupleId)),
+        claveSyncHolding(user1Pareja(coupleId)),
+        claveSyncHolding(user2Pareja(coupleId)),
+        claveSyncHoldSince(user1Pareja(coupleId)),
+        claveSyncHoldSince(user2Pareja(coupleId))
+      ];
+    }
+
+    function listaGratitudValida(valor) {
+      return valor is list && valor.size() <= 8;
+    }
+
+    function ritualPayloadValido(coupleId, data) {
+      return (
+        data.keys().hasOnly(clavesRitualPermitidas(coupleId))
+        && (
+          !('question' in data)
+          || data.question is string
+        )
+        && (
+          !('completedBy' in data)
+          || (
+            data.completedBy is list
+            && data.completedBy.hasOnly([user1Pareja(coupleId), user2Pareja(coupleId)])
+          )
+        )
+        && (
+          !('updatedAt' in data)
+          || data.updatedAt is int
+        )
+        && (
+          !('syncInviteFrom' in data)
+          || esUidPareja(coupleId, data.syncInviteFrom)
+        )
+        && (
+          !('syncInviteAt' in data)
+          || data.syncInviteAt is int
+        )
+        && (
+          !('syncUpdatedAt' in data)
+          || data.syncUpdatedAt is int
+        )
+        && (
+          !('syncCompleted' in data)
+          || data.syncCompleted is bool
+        )
+        && (
+          !('syncCompletedAt' in data)
+          || data.syncCompletedAt is int
+        )
+        && (
+          !('syncEvent' in data)
+          || data.syncEvent is string
+        )
+        && (
+          !(claveRespuesta(user1Pareja(coupleId)) in data)
+          || data[claveRespuesta(user1Pareja(coupleId))] is string
+        )
+        && (
+          !(claveRespuesta(user2Pareja(coupleId)) in data)
+          || data[claveRespuesta(user2Pareja(coupleId))] is string
+        )
+        && (
+          !(claveGratitud(user1Pareja(coupleId)) in data)
+          || listaGratitudValida(data[claveGratitud(user1Pareja(coupleId))])
+        )
+        && (
+          !(claveGratitud(user2Pareja(coupleId)) in data)
+          || listaGratitudValida(data[claveGratitud(user2Pareja(coupleId))])
+        )
+        && (
+          !(claveSyncHolding(user1Pareja(coupleId)) in data)
+          || data[claveSyncHolding(user1Pareja(coupleId))] is bool
+        )
+        && (
+          !(claveSyncHolding(user2Pareja(coupleId)) in data)
+          || data[claveSyncHolding(user2Pareja(coupleId))] is bool
+        )
+        && (
+          !(claveSyncHoldSince(user1Pareja(coupleId)) in data)
+          || data[claveSyncHoldSince(user1Pareja(coupleId))] is int
+        )
+        && (
+          !(claveSyncHoldSince(user2Pareja(coupleId)) in data)
+          || data[claveSyncHoldSince(user2Pareja(coupleId))] is int
         )
       );
     }
@@ -58,7 +286,10 @@ service cloud.firestore {
         && request.resource.data.email is string
         && request.resource.data.displayName is string
         && request.resource.data.createdAt is int
-        && (!('coupleId' in request.resource.data) || request.resource.data.coupleId is string)
+        && (
+          !('coupleId' in request.resource.data)
+          || request.resource.data.coupleId == ''
+        )
         && (!('lastSeen' in request.resource.data) || request.resource.data.lastSeen is int);
 
       allow update: if esMiUsuario(uid)
@@ -75,35 +306,70 @@ service cloud.firestore {
         && request.resource.data.createdAt is int
         && (!('lastSeen' in request.resource.data) || request.resource.data.lastSeen is int)
         && (
-          !('coupleId' in request.resource.data) ||
-          (
+          !('coupleId' in request.resource.data)
+          || (
             ('coupleId' in resource.data)
             && request.resource.data.coupleId == resource.data.coupleId
-          ) ||
-          (
-            parejaExisteYMePertenece(request.resource.data.coupleId)
           )
+          || request.resource.data.coupleId == ''
+          || esMiPareja(request.resource.data.coupleId)
+          || esMiParejaPost(request.resource.data.coupleId)
         );
 
       allow delete: if false;
     }
 
-    match /couples/{coupleId} {
-      allow get: if autenticado() && (
-        esMiPareja(coupleId)
-        ||
-        (
-          resource.data != null
-          && ('user2Id' in resource.data)
-          && resource.data.user2Id == ''
-        )
-      );
-
-      allow list: if autenticado()
-        && request.query.limit != null
-        && request.query.limit <= 1;
+    match /invite_codes/{inviteCode} {
+      allow get: if autenticado();
+      allow list: if false;
 
       allow create: if autenticado()
+        && inviteCode is string
+        && inviteCode.matches('^[A-Z0-9]{6}$')
+        && request.resource.data.keys().hasOnly([
+          'coupleId',
+          'createdBy',
+          'createdAt',
+          'active'
+        ])
+        && request.resource.data.coupleId is string
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is int
+        && request.resource.data.active == true
+        && parejaExistePost(request.resource.data.coupleId)
+        && docParejaPost(request.resource.data.coupleId).data.user1Id == request.auth.uid
+        && docParejaPost(request.resource.data.coupleId).data.user2Id == ''
+        && docParejaPost(request.resource.data.coupleId).data.inviteCode == inviteCode;
+
+      allow update: if autenticado()
+        && resource.data.coupleId is string
+        && (
+          esMiPareja(resource.data.coupleId)
+          || esMiParejaPost(resource.data.coupleId)
+        )
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['active'])
+        && request.resource.data.coupleId == resource.data.coupleId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && resource.data.active == true
+        && request.resource.data.active == false;
+
+      allow delete: if false;
+    }
+
+    match /couples/{coupleId} {
+      allow get: if esMiPareja(coupleId);
+      allow list: if false;
+
+      allow create: if autenticado()
+        && request.resource.data.keys().hasOnly([
+          'user1Id',
+          'user2Id',
+          'inviteCode',
+          'createdAt',
+          'connectionStrength',
+          'universeState'
+        ])
         && request.resource.data.user1Id == request.auth.uid
         && request.resource.data.user2Id == ''
         && request.resource.data.inviteCode is string
@@ -114,19 +380,11 @@ service cloud.firestore {
 
       allow update: if autenticado() && (
         (
-          (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id)
-          && request.resource.data.user1Id == resource.data.user1Id
-          && request.resource.data.user2Id == resource.data.user2Id
-          && request.resource.data.inviteCode == resource.data.inviteCode
-          && request.resource.data.createdAt == resource.data.createdAt
+          esMiPareja(coupleId)
+          && cambiosParejaPermitidos()
         )
         ||
-        (
-          request.resource.data.diff(resource.data).changedKeys().hasOnly(['user2Id'])
-          && resource.data.user2Id == ''
-          && request.resource.data.user2Id == request.auth.uid
-          && request.auth.uid != resource.data.user1Id
-        )
+        cambioJoinParejaPermitido(coupleId)
       );
 
       allow delete: if false;
@@ -264,7 +522,15 @@ service cloud.firestore {
     }
 
     match /rituals/{coupleId}/weekly/{weekId} {
-      allow read, create, update: if esMiPareja(coupleId);
+      allow read: if esMiPareja(coupleId);
+
+      allow create: if esMiPareja(coupleId)
+        && ritualPayloadValido(coupleId, request.resource.data);
+
+      allow update: if esMiPareja(coupleId)
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(clavesRitualPermitidas(coupleId))
+        && ritualPayloadValido(coupleId, request.resource.data);
+
       allow delete: if false;
     }
 
