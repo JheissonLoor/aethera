@@ -51,10 +51,6 @@ app.*.map.json
 /ios/Runner/GoogleService-Info.plist
 /macos/Runner/GoogleService-Info.plist
 
-# Local AI assistant context (not part of app source)
-.claude/
-CLAUDE.md
-
 # Reglas Firebase: dependencias y logs locales de pruebas
 /firebase/rules/node_modules/
 /firebase/rules/*-debug.log
