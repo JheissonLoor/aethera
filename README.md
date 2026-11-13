@@ -109,12 +109,12 @@ flutter pub get
 flutterfire configure
 ```
 
-Notas de seguridad del repositorio:
+Notas de seguridad y arquitectura del repositorio:
 
-- `lib/firebase_options.dart` contiene configuracion de cliente Firebase generada.
-- No guardes secretos de backend en el cliente; usa variables/secret manager en servidor.
-- `android/app/google-services.json` no se versiona.
-- Usa `android/app/google-services.json.example` solo como plantilla.
+- `lib/firebase_options.dart` contiene la configuración pública de cliente generada por FlutterFire para identificación del proyecto.
+- El control de acceso e integridad se gobierna estrictamente en la capa de datos mediante reglas declarativas en `firebase/rules/` (`firestore.rules`, `database.rules.json` y `storage.rules`), auditadas mediante pruebas automatizadas (`*.rules.test.cjs`).
+- No se almacenan secretos de servicio ni credenciales maestras en el cliente móvil.
+- `android/app/google-services.json` no se versiona; se provee `android/app/google-services.json.example` como plantilla.
 
 ### 4) Ejecutar
 
