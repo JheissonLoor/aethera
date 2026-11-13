@@ -111,9 +111,9 @@ flutterfire configure
 
 Notas de seguridad y arquitectura del repositorio:
 
-- `lib/firebase_options.dart` contiene la configuración pública de cliente generada por FlutterFire para identificación del proyecto.
-- El control de acceso e integridad se gobierna estrictamente en la capa de datos mediante reglas declarativas en `firebase/rules/` (`firestore.rules`, `database.rules.json` y `storage.rules`), auditadas mediante pruebas automatizadas (`*.rules.test.cjs`).
-- No se almacenan secretos de servicio ni credenciales maestras en el cliente móvil.
+- `lib/firebase_options.dart` contiene la configuración pública de cliente generada por FlutterFire para la identificación del proyecto.
+- Las políticas de acceso y validación de datos se gobiernan mediante reglas de seguridad declarativas en la raíz del proyecto (`firestore.rules`, `database.rules.json` y `storage.rules`), con suites de pruebas automatizadas en `firebase/rules/` (`*.rules.test.cjs`).
+- Como principio de arquitectura cliente, las credenciales con privilegios elevados y secretos de servicio no deben incluirse en el bundle de la aplicación móvil; las operaciones administrativas corresponden a entornos de servidor.
 - `android/app/google-services.json` no se versiona; se provee `android/app/google-services.json.example` como plantilla.
 
 ### 4) Ejecutar
